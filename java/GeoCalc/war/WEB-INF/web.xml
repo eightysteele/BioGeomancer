@@ -7,16 +7,6 @@
 
 	<!-- Servlets -->
 	<servlet>
-		<servlet-name>greetServlet</servlet-name>
-		<servlet-class>org.bg.server.GreetingServiceImpl</servlet-class>
-	</servlet>
-
-	<servlet-mapping>
-		<servlet-name>greetServlet</servlet-name>
-		<url-pattern>/geocalc/greet</url-pattern>
-	</servlet-mapping>
-
-	<servlet>
 		<servlet-name>apiServlet</servlet-name>
 		<servlet-class>org.bg.server.GeoCalcApi</servlet-class>
 	</servlet>
