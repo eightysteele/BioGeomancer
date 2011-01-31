@@ -46,7 +46,7 @@ public class GeoCalcApi extends HttpServlet {
         lat).longitude(lon).build();
     Locality l = Localities.namedPlaceOnly(c, extent);
 
-    double error = l.getError(DistanceUnit.MILE);
+    double error = l.getError(DistanceUnit.METER);
     LatLng ll = l.getCoordinates().getPoint();
     String json = new Gson().toJson(ImmutableMap.of("point", ll, "radius",
         error));
