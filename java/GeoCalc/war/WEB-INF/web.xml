@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE web-app
+    PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+    "http://java.sun.com/dtd/web-app_2_3.dtd">
+
+<web-app>
+
+	<!-- Servlets -->
+	<servlet>
+		<servlet-name>greetServlet</servlet-name>
+		<servlet-class>org.bg.server.GreetingServiceImpl</servlet-class>
+	</servlet>
+
+	<servlet-mapping>
+		<servlet-name>greetServlet</servlet-name>
+		<url-pattern>/geocalc/greet</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>apiServlet</servlet-name>
+		<servlet-class>org.bg.server.GeoCalcApi</servlet-class>
+	</servlet>
+
+	<servlet-mapping>
+		<servlet-name>apiServlet</servlet-name>
+		<url-pattern>/geocalc/api</url-pattern>
+	</servlet-mapping>
+
+
+	<security-constraint>
+		<web-resource-collection>
+			<url-pattern>/geocalc/api/*</url-pattern>
+		</web-resource-collection>
+		<auth-constraint>
+			<role-name>admin</role-name>
+		</auth-constraint>
+	</security-constraint>
+
+</web-app>
