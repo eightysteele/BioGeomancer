@@ -1,0 +1,11 @@
+application: biogeomancer
+version: geocalc
+runtime: java
+
+handlers:
+- url: /admin/*
+  login: admin
+  
+  - url: /api/*
+     servlet: org.bg.server.Api
+     name: api

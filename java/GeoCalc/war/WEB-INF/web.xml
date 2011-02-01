@@ -8,18 +8,18 @@
 	<!-- Servlets -->
 	<servlet>
 		<servlet-name>apiServlet</servlet-name>
-		<servlet-class>org.bg.server.GeoCalcApi</servlet-class>
+		<servlet-class>org.bg.server.Api</servlet-class>
 	</servlet>
 
 	<servlet-mapping>
 		<servlet-name>apiServlet</servlet-name>
-		<url-pattern>/geocalc/api</url-pattern>
+		<url-pattern>/api/*</url-pattern>
 	</servlet-mapping>
 
 
 	<security-constraint>
 		<web-resource-collection>
-			<url-pattern>/geocalc/api/*</url-pattern>
+			<url-pattern>/api/*</url-pattern>
 		</web-resource-collection>
 		<auth-constraint>
 			<role-name>admin</role-name>
