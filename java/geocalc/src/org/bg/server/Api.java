@@ -27,24 +27,6 @@ public class Api extends HttpServlet {
 
   private static final long serialVersionUID = -5043453429490500409L;
 
-  /**
-   * Required for NPO:
-   * 
-   * @param e extent
-   * @param d datum (default Datum.UNKNOWN)
-   * @param cp coordinate precision
-   * @param ll latitude,longitude
-   * @param src coodinate source
-   * @param t place type (name place only, etc)
-   * 
-   * @param sys coordinate system (can infer)
-   * 
-   * 
-   * 
-   * @param du distance unit
-   * 
-   * @param p place
-   */
   @Override
   public void doGet(HttpServletRequest req, HttpServletResponse resp)
       throws IOException {
