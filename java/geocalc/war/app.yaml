@@ -1,11 +1,12 @@
 application: biogeomancer
-version: geocalc
+version: api
 runtime: java
 
 handlers:
 - url: /admin/*
   login: admin
   
-  - url: /api/*
-     servlet: org.bg.server.Api
-     name: api
+- url: /api/*     
+  servlet: org.bg.server.Api
+  name: api
+  login: admin

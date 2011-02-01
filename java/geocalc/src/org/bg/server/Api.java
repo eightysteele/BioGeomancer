@@ -34,9 +34,8 @@ public class Api extends HttpServlet {
     // Handles a constants request:
     if (req.getRequestURI().endsWith("constants")) {
       String json = new Gson().toJson(ImmutableMap.of("datum", Datum.values(),
-          "precision", Coordinates.Precision.values(), "system",
-          Coordinates.System.values(), "sources",
-          Coordinates.Precision.values(), "units", DistanceUnit.values()));
+          "system", Coordinates.System.values(), "sources",
+          Coordinates.Source.values(), "units", DistanceUnit.values()));
       resp.setContentType("application/json");
       resp.getWriter().println(json);
       return;
@@ -44,7 +43,6 @@ public class Api extends HttpServlet {
 
     // Required
     double lat = 0, lon = 0, extent = 0;
-    Coordinates.Precision coordPrecision = null;
     String type;
 
     // Optional
@@ -87,12 +85,6 @@ public class Api extends HttpServlet {
         throw new IllegalArgumentException("Invalid coordinate source: " + cs);
       }
 
-      // Coordinate precision:
-      coordPrecision = Coordinates.Precision.fromName(req.getParameter("precision"));
-      if (coordPrecision == null) {
-        throw new IllegalArgumentException("Coordinate precision required");
-      }
-
     } catch (Exception e) {
       log.warning(e + "");
       resp.sendError(404);
@@ -101,8 +93,7 @@ public class Api extends HttpServlet {
 
     // Uses georef API to calculate PR:
     Coordinates c = new Coordinates.Builder(Coordinates.System.DD, datum,
-        coordSrc, DistanceUnit.METER, coordPrecision).latitude(lat).longitude(
-        lon).build();
+        coordSrc, DistanceUnit.METER).latitude(lat).longitude(lon).build();
 
     log.warning(c + "");
 
