@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.google.appengine.repackaged.com.google.common.collect.ImmutableMap;
+import com.google.common.base.Charsets;
 import com.google.gson.Gson;
 
 import edu.berkeley.mvz.georef.Coordinates;
@@ -44,6 +45,7 @@ public class GeoCalcServlet extends HttpServlet {
     // Required
     double lat = 0, lon = 0, extent = 0;
     String type;
+    Coordinates.System coordSys = null;
 
     // Optional
     Datum datum = Datum.WGS84_WORLD_GEODETIC_SYSTEM_1984;
@@ -56,6 +58,12 @@ public class GeoCalcServlet extends HttpServlet {
           || !type.equalsIgnoreCase("PNO")) {
         throw new IllegalArgumentException(
             "Only Place Name Only type supported");
+      }
+
+      // Coordinate system
+      coordSys = Coordinates.System.fromName(req.getParameter("sys"));
+      if (coordSys == null) {
+        throw new IllegalArgumentException("Invalid coordinate system");
       }
 
       // Lat/Lon
@@ -92,8 +100,8 @@ public class GeoCalcServlet extends HttpServlet {
     }
 
     // Uses georef API to calculate PR:
-    Coordinates c = new Coordinates.Builder(Coordinates.System.DD, datum,
-        coordSrc, DistanceUnit.METER).latitude(lat).longitude(lon).build();
+    Coordinates c = new Coordinates.Builder(coordSys, datum, coordSrc,
+        DistanceUnit.METER).latitude(lat).longitude(lon).build();
 
     log.warning(c + "");
 
@@ -105,6 +113,7 @@ public class GeoCalcServlet extends HttpServlet {
         error));
 
     resp.setContentType("application/json");
+    resp.setCharacterEncoding(Charsets.UTF_8.displayName());
     resp.getWriter().println(json);
   }
 }
