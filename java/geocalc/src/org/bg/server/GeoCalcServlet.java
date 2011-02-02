@@ -21,9 +21,9 @@ import edu.berkeley.mvz.georef.Locality;
  * Servelt for API requests.
  * 
  */
-public class Api extends HttpServlet {
+public class GeoCalcServlet extends HttpServlet {
 
-  private static final Logger log = Logger.getLogger(Api.class.getName());
+  private static final Logger log = Logger.getLogger(GeoCalcServlet.class.getName());
 
   private static final long serialVersionUID = -5043453429490500409L;
 

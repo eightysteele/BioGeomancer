@@ -5,25 +5,28 @@
 
 <web-app>
 
-  <!-- Servlets -->
-  <servlet>
-    <servlet-name>apiServlet</servlet-name>
-    <servlet-class>org.bg.server.Api</servlet-class>
-    </servlet>
+	<!-- Servlets -->
+	<servlet>
+		<servlet-name>geoCalcServlet</servlet-name>
+		<servlet-class>org.bg.server.GeoCalcServlet</servlet-class>
+	</servlet>
 
-  <servlet-mapping>
-    <servlet-name>apiServlet</servlet-name>
-    <url-pattern>/api/*</url-pattern>
-    </servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>geoCalcServlet</servlet-name>
+		<url-pattern>/geocalc*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>geoCalcServlet</servlet-name>
+		<url-pattern>/geocalc/*</url-pattern>
+	</servlet-mapping>
 
-
-  <security-constraint>
-    <web-resource-collection>
-      <url-pattern>/api/*</url-pattern>
-      </web-resource-collection>
-    <auth-constraint>
-      <role-name>admin</role-name>
-      </auth-constraint>
-    </security-constraint>
+	<security-constraint>
+		<web-resource-collection>
+			<url-pattern>/geocalc*</url-pattern>
+		</web-resource-collection>
+		<auth-constraint>
+			<role-name>admin</role-name>
+		</auth-constraint>
+	</security-constraint>
 
 </web-app>
