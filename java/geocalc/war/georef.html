@@ -57,18 +57,33 @@
     	}
  		app.geocoder.geocode( { 'address': address}, function(results, status) {
     		if (status == google.maps.GeocoderStatus.OK) {
-    		  	$('json_results').innerHTML = JSON.stringify(results);
-      			app.map.setCenter(results[0].geometry.location);
+    		  	var position = results[0].geometry.location;
       			var marker = new google.maps.Marker({
           			map: app.map, 
-          			position: results[0].geometry.location
+          			position: position
       			});
       			jQuery.ajax({
-      			  url: 'http://localhost:8888/geocalc?type=pno&extent=3000&ll=35.3733333,-119.0177777&sys=dms&datum=not_recorded',
+      			  url: '/geocalc?type=pno&extent=3000&ll='+position.lat()+','+position.lng()+'&sys=dms&datum=not_recorded&source=gazetteer',
       			  success: function(data) {
-      			    alert(JSON.stringify(data));
+      			    //alert(data.radius);
+      			    var point = new google.maps.LatLng(data.point.latitude, data.point.longitude);
+      			    var opts = {
+      			        center : point,
+      			        radius : data.radius,
+      			        fillColor: '#CEE3F6',
+      			        strokeWeight: 1
+      			    };
+      			    var circle = circle = new google.maps.Circle(opts);
+      			    //opts.center = new google.maps.LatLng(data.point.latitude, data.point.longitude);
+      			    //opts.radius = data.radius;
+      			    circle.setMap(app.map);
+      			    app.map.setZoom(12);
+      			    app.map.setCenter(point);      			
+      			    //app.map.setCenter(circle);
       			  }
       			});
+    		  	$('json_results').innerHTML = JSON.stringify(results);
+      			
     		} else {
       			alert("Geocode was not successful for the following reason: " + status);
     		}

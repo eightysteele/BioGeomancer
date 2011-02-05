@@ -20,6 +20,7 @@
 		<url-pattern>/geocalc/*</url-pattern>
 	</servlet-mapping>
 
+<!--
 	<security-constraint>
 		<web-resource-collection>
 			<url-pattern>/geocalc*</url-pattern>
@@ -28,5 +29,5 @@
 			<role-name>admin</role-name>
 		</auth-constraint>
 	</security-constraint>
-
+-->
 </web-app>
