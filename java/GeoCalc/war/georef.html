@@ -26,18 +26,27 @@
     top:31px;
 }
 
+#clearMapButton {
+    position:fixed;
+    top:31px;
+    left:400px;
+}
+
 </style>
 <script src="http://maps.google.com/maps/api/js?sensor=false"></script>
+<script src="http://maps.google.com/maps/api/js?libraries=geometry&sensor=false"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js"></script> 
 </head> 
 <body style="font: 75% Lucida Grande, Trebuchet MS"> 
     <div id='bg'>BioGeomancer2.0</div>
     <input id="location" type="search" style="width: 300px;"> 
     <input id="button" type="button" value="Georeference">
+    <input id="clearMapButton" type="button" value="Clear Map">
     <p> 
     <div id="map_canvas" style="height:60%"></div>
+    <p>    
+    <div id="geoCalcUrl"></div>
     <p>
-    Raw JSON results:<BR>
     <div id="json_results"></div>
 <script><!-- 
 
@@ -57,15 +66,32 @@
     	}
  		app.geocoder.geocode( { 'address': address}, function(results, status) {
     		if (status == google.maps.GeocoderStatus.OK) {
-    		  	var position = results[0].geometry.location;
+    			var position = results[0].geometry.location,
+    			    viewport = results[0].geometry.viewport,
+        		    bounds = results[0].geometry.bounds,
+        		    center = null, 
+        		    extent = null;
+        		if (bounds != null) {
+    			    center = bounds.getCenter();
+    			    var sw = results[0].geometry.bounds.getSouthWest();
+                    extent = google.maps.geometry.spherical.computeDistanceBetween(center, sw);    
+        		} else {
+            		center = position;
+            		extent = 1000; // 1Km. Correct default extent?
+        		}
       			var marker = new google.maps.Marker({
           			map: app.map, 
           			position: position
-      			});
+      			});      			
+
+      			// Calculate geocoding uncertainty:
+      		    var geoCalcUrl = '/geocalc?type=pno&extent='+extent+'&ll='+position.lat()+','+position.lng()+'&sys=dms&datum=not_recorded&source=gazetteer';
+      			$('geoCalcUrl').innerHTML = 'GeoCalc URL: ' + geoCalcUrl;
       			jQuery.ajax({
-      			  url: '/geocalc?type=pno&extent=3000&ll='+position.lat()+','+position.lng()+'&sys=dms&datum=not_recorded&source=gazetteer',
+      			  url: geoCalcUrl, 
       			  success: function(data) {
-      			    //alert(data.radius);
+
+                    // Circle:
       			    var point = new google.maps.LatLng(data.point.latitude, data.point.longitude);
       			    var opts = {
       			        center : point,
@@ -73,16 +99,22 @@
       			        fillColor: '#CEE3F6',
       			        strokeWeight: 1
       			    };
-      			    var circle = circle = new google.maps.Circle(opts);
-      			    //opts.center = new google.maps.LatLng(data.point.latitude, data.point.longitude);
-      			    //opts.radius = data.radius;
-      			    circle.setMap(app.map);
-      			    app.map.setZoom(12);
+      			    var circle = new google.maps.Circle(opts);
+      			    circle.setMap(app.map);      			          			    
       			    app.map.setCenter(point);      			
-      			    //app.map.setCenter(circle);
-      			  }
+
+      			    // Bounding box:
+      			    if (bounds != null) {
+      			        var rectangle = new google.maps.Rectangle({bounds : bounds, strokeWeight : 1});
+      			        rectangle.setMap(app.map);
+      			    }
+
+      			   app.map.panToBounds(viewport);               
+      			   app.map.setZoom(9);       
+      			    
+      			  }      			
       			});
-    		  	$('json_results').innerHTML = JSON.stringify(results);
+    		  	$('json_results').innerHTML = 'Raw JSON results: ' + JSON.stringify(results);
       			
     		} else {
       			alert("Geocode was not successful for the following reason: " + status);
@@ -90,19 +122,27 @@
   		});
 	}
 
+    app.handleClearMap = function(evt) {
+    	app.map = new google.maps.Map(document.getElementById("map_canvas"), app.mapOptions);
+    	$('geoCalcUrl').innerHTML = '';
+    	$('json_results').innerHTML = '';
+    	$('location').value = '';
+    }
+        
 	app.init = function() {
 		var queryPlaceholder = "Berkeley, CA",			
-    		latlng = new google.maps.LatLng(37, -121);
-    		myOptions = {
+    		latlng = new google.maps.LatLng(37.8, -121);
+    		app.mapOptions = {
       			zoom: 8,
       			center: latlng,
       			mapTypeId: google.maps.MapTypeId.TERRAIN
     		};
     		
     	app.geocoder = geocoder = new google.maps.Geocoder();
-    	app.map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+    	app.map = new google.maps.Map(document.getElementById("map_canvas"), app.mapOptions);
     	
     	$('button').addEventListener('click', app.handleOnClick, false);
+    	$('clearMapButton').addEventListener('click', app.handleClearMap, false);
     	$('location').setAttribute('placeholder', queryPlaceholder);
 		$('location').addEventListener('keyup', function(evt) {
   		if (evt.keyCode === 13) {
