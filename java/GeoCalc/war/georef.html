@@ -86,7 +86,11 @@
 
       			// Calculate geocoding uncertainty:
       		    var geoCalcUrl = '/geocalc?type=pno&extent='+extent+'&ll='+center.lat()+','+center.lng()+'&sys=dms&datum=not_recorded&source=gazetteer';
-      			$('geoCalcUrl').innerHTML = 'GeoCalc URL: ' + geoCalcUrl;
+      		    var innerHTML = 'GeoCalc URL';
+      		    innerHTML += ' (<a href="http://dev.biogeomancer.appspot.com' + geoCalcUrl + '">dev</a>, ';
+      		    innerHTML += ' <a href="http://localhost:8080' + geoCalcUrl + '">local</a>): ';
+      		    innerHTML += geoCalcUrl;
+      			$('geoCalcUrl').innerHTML = innerHTML;
       			jQuery.ajax({
       			  url: geoCalcUrl, 
       			  success: function(data) {
@@ -102,10 +106,20 @@
       			    var circle = new google.maps.Circle(opts);
       			    circle.setMap(app.map);      			          			    
       			    app.map.setCenter(point);      			
-       			    app.map.panToBounds(viewport);               
-      			    app.map.setZoom(9);       
+
+      			    // Bounding box:
+      			    if (bounds != null) {
+      			        var rectangle = new google.maps.Rectangle({bounds : bounds, strokeWeight : 1});
+      			        //rectangle.setMap(app.map);
+      			    }
+
+      			   app.map.panToBounds(viewport);               
+      			   app.map.setZoom(9);       
+      			    
+      			  }      			
       			});
     		  	$('json_results').innerHTML = 'Raw JSON results: ' + JSON.stringify(results);
+      			
     		} else {
       			alert("Geocode was not successful for the following reason: " + status);
     		}
