@@ -81,11 +81,11 @@
         		}
       			var marker = new google.maps.Marker({
           			map: app.map, 
-          			position: position
+          			position: center
       			});      			
 
       			// Calculate geocoding uncertainty:
-      		    var geoCalcUrl = '/geocalc?type=pno&extent='+extent+'&ll='+position.lat()+','+position.lng()+'&sys=dms&datum=not_recorded&source=gazetteer';
+      		    var geoCalcUrl = '/geocalc?type=pno&extent='+extent+'&ll='+center.lat()+','+center.lng()+'&sys=dms&datum=not_recorded&source=gazetteer';
       			$('geoCalcUrl').innerHTML = 'GeoCalc URL: ' + geoCalcUrl;
       			jQuery.ajax({
       			  url: geoCalcUrl, 
@@ -102,20 +102,10 @@
       			    var circle = new google.maps.Circle(opts);
       			    circle.setMap(app.map);      			          			    
       			    app.map.setCenter(point);      			
-
-      			    // Bounding box:
-      			    if (bounds != null) {
-      			        var rectangle = new google.maps.Rectangle({bounds : bounds, strokeWeight : 1});
-      			        rectangle.setMap(app.map);
-      			    }
-
-      			   app.map.panToBounds(viewport);               
-      			   app.map.setZoom(9);       
-      			    
-      			  }      			
+       			    app.map.panToBounds(viewport);               
+      			    app.map.setZoom(9);       
       			});
     		  	$('json_results').innerHTML = 'Raw JSON results: ' + JSON.stringify(results);
-      			
     		} else {
       			alert("Geocode was not successful for the following reason: " + status);
     		}
@@ -138,7 +128,7 @@
       			mapTypeId: google.maps.MapTypeId.TERRAIN
     		};
     		
-    	app.geocoder = geocoder = new google.maps.Geocoder();
+    	app.geocoder = new google.maps.Geocoder();
     	app.map = new google.maps.Map(document.getElementById("map_canvas"), app.mapOptions);
     	
     	$('button').addEventListener('click', app.handleOnClick, false);
