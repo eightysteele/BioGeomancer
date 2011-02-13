@@ -43,120 +43,184 @@
     <input id="button" type="button" value="Georeference">
     <input id="clearMapButton" type="button" value="Clear Map">
     <p> 
-    <div id="map_canvas" style="height:60%"></div>
+    <div id="map_canvas" style="height:80%"></div>
     <p>    
-    <div id="geoCalcUrl"></div>
-    <p>
     <div id="json_results"></div>
 <script><!-- 
 
-	$ = (function () {
-  		var $ = function(id) {
-    		return document.getElementById(id);
-  		}
-  		return $;
-	}());
-	
 	var app = app || {};
-    
+
+	/**
+	 * Gets extent from bounds. If bounds is null, null is returned. Otherwise
+	 * the geodesic in meters (the "extent") between the center of the bounds 
+	 * and the southwest corner is returned.
+	 *
+	 * @param bounds google.maps.LatLngBounds
+	 *
+	 */
+	app.getExtent = function(bounds) {
+	    if (bounds == null) {
+	        return 0;
+	    }
+	  	var center = bounds.getCenter(),
+	  		sw = bounds.getSouthWest(),
+	    	extent = google.maps.geometry.spherical.computeDistanceBetween(center, sw);
+	    return extent;
+	} 
+	
+	/**
+	 * Gets the center of a Google geocode result given bounds. If bounds is null
+	 * the location is returned. Otherwise the bounds center is returned.
+	 */
+	app.getCenter = function(bounds, location) {
+	    if (bounds == null) {
+	        return location;
+	    }
+	    return bounds.getCenter();
+	}
+	
+	/**
+     * Displays Google geocoder web service results as markers on the map. Also
+     * uses the geocalc web service to asynchronously calculate uncertainties 
+     * which are rendered as circles on the map around their corresponding marker.
+     */    	
+	app.displayResults = function(results) {
+	  	if (results.length == 0) {
+	  	    return;
+	  	}
+	
+	  	var viewport = null,
+	      	bounds = null,
+    	  	center = null,
+    	  	extent = null,
+    	  	marker = null,
+    	  	r = null,
+          	viewport = results[0].geometry.viewport;
+	  
+	  	for (x in results) {
+	  	    r = results[x];
+	      	bounds = r.geometry.bounds;
+	      	center = app.getCenter(bounds, r.geometry.location);	      
+	      	marker = new google.maps.Marker({
+	      	    map : app.map,
+	      	    position: center
+	      	});      
+	      	app.geocoderMarkers.push(marker);	      
+	     	app.displayRadius(bounds, center);
+	      	viewport.union(r.geometry.viewport);
+	  	}
+	  	
+	  	app.map.fitBounds(viewport);
+	}
+	
+	/**
+	 * AJAX call to geocalc service. Renders a circle on success. Adds circle
+	 * to app.geocoderMarkers.
+	 *
+	 */
+	app.displayRadius = function(bounds, center) {
+	    extent = app.getExtent(bounds);
+      	url = app.getGeoCalcUrl(center, extent);
+      	jQuery.ajax({
+			url: url,
+			success: function(data) {
+				var point = new google.maps.LatLng(data.point.latitude, data.point.longitude),
+			    	circle = new google.maps.Circle({
+    			    	map : app.map,
+			    	    center : point,
+    			       	radius : data.radius,
+    			      	fillColor: '#CEE3F6',
+    			        strokeWeight: 1
+    			    });
+			    	app.geocoderMarkers.push(circle);
+			}
+      	});
+	}
+	
+	app.GEO_CALC_URL = '/geocalc?type=pno&extent=EXTENT&ll=LAT,LNG&sys=dms&datum=not_recorded&source=gazetteer';
+	
+	/**
+     * Gets the geocalc web service URL for the given center point and bounding
+     * box extent from a Google geocode result.
+     */
+    app.getGeoCalcUrl = function(center, extent) {
+		var url = app.GEO_CALC_URL;
+		url = url.replace('EXTENT', String(extent));
+		url = url.replace('LAT', String(center.lat()));
+		url = url.replace('LNG', String(center.lng()));
+		return url;	    
+	}
+	
+	/**
+	 * Handler for the georeference button. Geocodes the address using Google
+	 * geocoder web service. On success it displays results as markers and 
+	 * uncertainties as circles on the map.
+     */    
 	app.handleOnClick = function(evt) {
     	var address = $('location').value;
     	if (address == '') {
     	  address = $('location').getAttribute('placeholder');
     	}
- 		app.geocoder.geocode( { 'address': address}, function(results, status) {
-    		if (status == google.maps.GeocoderStatus.OK) {
-    			var position = results[0].geometry.location,
-    			    viewport = results[0].geometry.viewport,
-        		    bounds = results[0].geometry.bounds,
-        		    center = null, 
-        		    extent = null;
-        		if (bounds != null) {
-    			    center = bounds.getCenter();
-    			    var sw = results[0].geometry.bounds.getSouthWest();
-                    extent = google.maps.geometry.spherical.computeDistanceBetween(center, sw);    
-        		} else {
-            		center = position;
-            		extent = 1000; // 1Km. Correct default extent?
-        		}
-      			var marker = new google.maps.Marker({
-          			map: app.map, 
-          			position: center
-      			});      			
-
-      			// Calculate geocoding uncertainty:
-      		    var geoCalcUrl = '/geocalc?type=pno&extent='+extent+'&ll='+center.lat()+','+center.lng()+'&sys=dms&datum=not_recorded&source=gazetteer';
-      		    var innerHTML = 'GeoCalc URL';
-      		    innerHTML += ' (<a href="http://dev.biogeomancer.appspot.com' + geoCalcUrl + '">dev</a>, ';
-      		    innerHTML += ' <a href="http://localhost:8080' + geoCalcUrl + '">local</a>): ';
-      		    innerHTML += geoCalcUrl;
-      			$('geoCalcUrl').innerHTML = innerHTML;
-      			jQuery.ajax({
-      			  url: geoCalcUrl, 
-      			  success: function(data) {
-
-                    // Circle:
-      			    var point = new google.maps.LatLng(data.point.latitude, data.point.longitude);
-      			    var opts = {
-      			        center : point,
-      			        radius : data.radius,
-      			        fillColor: '#CEE3F6',
-      			        strokeWeight: 1
-      			    };
-      			    var circle = new google.maps.Circle(opts);
-      			    circle.setMap(app.map);      			          			    
-      			    app.map.setCenter(point);      			
-
-      			    // Bounding box:
-      			    if (bounds != null) {
-      			        var rectangle = new google.maps.Rectangle({bounds : bounds, strokeWeight : 1});
-      			        //rectangle.setMap(app.map);
-      			    }
-
-      			   app.map.panToBounds(viewport);               
-      			   app.map.setZoom(9);       
-      			    
-      			  }      			
-      			});
-    		  	$('json_results').innerHTML = 'Raw JSON results: ' + JSON.stringify(results);
-      			
-    		} else {
-      			alert("Geocode was not successful for the following reason: " + status);
+ 		app.geocoder.geocode({'address': address}, function(results, status) {		  	
+ 		    if (status == google.maps.GeocoderStatus.OK) {	  
+ 		       	app.clearOverlays();
+    		  	app.displayResults(results);
+    		  	var json = JSON.stringify(results);
+    		  	$('json_results').innerHTML = 'Raw JSON results: ' + json;      			
+    		} else {    		    
+    		    alert(status);
+    		    app.handleClearMap();
+      			$('button').focus();
     		}
   		});
 	}
 
+	/**
+     * Clears overlays from the map and resets json_results and location.
+     */
     app.handleClearMap = function(evt) {
-    	app.map = new google.maps.Map(document.getElementById("map_canvas"), app.mapOptions);
-    	$('geoCalcUrl').innerHTML = '';
+    	app.clearOverlays();
     	$('json_results').innerHTML = '';
     	$('location').value = '';
     }
-        
-	app.init = function() {
-		var queryPlaceholder = "Berkeley, CA",			
-    		latlng = new google.maps.LatLng(37.8, -121);
-    		app.mapOptions = {
-      			zoom: 8,
-      			center: latlng,
-      			mapTypeId: google.maps.MapTypeId.TERRAIN
-    		};
-    		
-    	app.geocoder = new google.maps.Geocoder();
-    	app.map = new google.maps.Map(document.getElementById("map_canvas"), app.mapOptions);
+    
+    /**
+     * Clears overlays from the map.
+     */
+    app.clearOverlays = function() {        
+      	if (app.geocoderMarkers) {
+        	for (i in app.geocoderMarkers) {
+         		app.geocoderMarkers[i].setMap(null);
+        	}
+        app.geocoderMarkers.length = 0;
+      }
+    }
     	
-    	$('button').addEventListener('click', app.handleOnClick, false);
-    	$('clearMapButton').addEventListener('click', app.handleClearMap, false);
-    	$('location').setAttribute('placeholder', queryPlaceholder);
-		$('location').addEventListener('keyup', function(evt) {
-  		if (evt.keyCode === 13) {
-    		$('button').click();
- 	 	}
-		}, false);
-	}
-  	
-	app.init();
-	
+	$ = (function () {
+  			var $ = function(id) {
+    			return document.getElementById(id);
+  			}
+			var queryPlaceholder = "Berkeley, CA",			
+			latlng = new google.maps.LatLng(37.8, -121);
+			app.mapOptions = {
+  				zoom: 8,
+  				center: latlng,
+  				mapTypeId: google.maps.MapTypeId.TERRAIN
+			};		
+			app.geocoder = new google.maps.Geocoder();
+			app.map = new google.maps.Map(document.getElementById("map_canvas"), app.mapOptions);
+			app.geocoderMarkers = [];
+			$('button').addEventListener('click', app.handleOnClick, false);
+			$('clearMapButton').addEventListener('click', app.handleClearMap, false);
+			$('location').setAttribute('placeholder', queryPlaceholder);
+			$('location').addEventListener('keyup', function(evt) {
+				// Programatically clicks if keyup is the enter key:
+			    if (evt.keyCode === 13) {
+					$('button').click();
+	 			}
+			}, false);
+  			return $;
+		}());
 --></script> 
 </body> 
 </html> 
