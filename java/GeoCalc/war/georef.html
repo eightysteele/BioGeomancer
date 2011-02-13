@@ -153,16 +153,16 @@ app.handleOnClick = function(evt) {
     if (address == '') {
         address = $('location').getAttribute('placeholder');
     }
-	app.geocoder.geocode({'address': address}, function(results, status) {
+    app.geocoder.geocode({'address': address}, function(results, status) {
         if (status == google.maps.GeocoderStatus.OK) {
-        	app.clearOverlays();
+            app.clearOverlays();
             app.displayResults(results);
             var json = JSON.stringify(results);
             $('json_results').innerHTML = 'Raw JSON results: ' + json;
-		} else {
-        	alert(status);
-        	app.handleClearMap();
-        	$('button').focus();
+        } else {
+            alert(status);
+            app.handleClearMap();
+            $('button').focus();
         }
     });
 }
