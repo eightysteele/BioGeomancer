@@ -1,0 +1,9 @@
+"locality"
+"7 kilometers South and 3 km E of Gaastra"
+"7km S, 3 km E Gaastra"
+"Gaastra, 7 km S and 3km E"
+"Gaastra, 7 km S, 3 km E"
+"Gaastra; 7 km S, 3 km E"
+
+
+value.split(/\s+[aA][nN][dD]|&\s+/)
