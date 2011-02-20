@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/geocalc.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/guava-r08.jar" sourcepath="/Users/eighty/Java/guava-r08/guava-src-r08.zip"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/gson-1.4.jar"/>
+	<classpathentry kind="lib" path="/usr/lib/eclipse/plugins/javax.servlet_2.5.0.v200806031605.jar"/>
+	<classpathentry kind="output" path="war/WEB-INF/classes"/>
+</classpath>

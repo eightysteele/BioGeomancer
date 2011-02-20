@@ -5,6 +5,7 @@ production.ini
 # Compiled source #
 ###################
 *.pyc
+*.class
 
 # Logs and databases #
 ######################
