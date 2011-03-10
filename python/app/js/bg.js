@@ -281,6 +281,7 @@ app.init = function () {
     };
     app.geocoder = new google.maps.Geocoder();
     app.map = new google.maps.Map(document.getElementById("map_canvas"), app.mapOptions);
+    app.map.setZoom(3);
     app.geocoderMarkers = [];
     $('#button').click(app.handleOnClick);
     $('#clearMapButton').click(app.handleClearMap);
@@ -292,5 +293,4 @@ app.init = function () {
                 $('#button').click();
             }
         }, false);
-    $('#button').click();
 };
