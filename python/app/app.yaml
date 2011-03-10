@@ -5,6 +5,9 @@ api_version: 1
 
 handlers:
 
+- url: /js
+  static_dir: js
+
 - url: /hooks/.*
   script: app.py
    

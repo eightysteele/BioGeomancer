@@ -48,7 +48,6 @@ public class ApiServlet extends HttpServlet {
     // Optional
     Datum datum = Datum.WGS84_WORLD_GEODETIC_SYSTEM_1984;
     Coordinates.Source coordSrc = Coordinates.Source.GAZETTEER;
-    String callback = null; 
 
     try {
       // Place type
@@ -91,10 +90,6 @@ public class ApiServlet extends HttpServlet {
       if (coordSrc == null) {
         throw new IllegalArgumentException("Invalid coordinate source: " + cs);
       }
-      
-      // JSONP callback:
-      
-
     } catch (Exception e) {
       log.warning(e + "");
       resp.sendError(404);
@@ -105,17 +100,24 @@ public class ApiServlet extends HttpServlet {
     Coordinates c = new Coordinates.Builder(coordSys, datum, coordSrc,
         DistanceUnit.METER).latitude(lat).longitude(lon).build();
 
-    log.warning(c + "");
-
     Locality l = Localities.namedPlaceOnly(c, extent);
 
     double error = l.getError(DistanceUnit.METER);
     LatLng ll = l.getCoordinates().getPoint();
     String json = new Gson().toJson(ImmutableMap.of("point", ll, "radius",
         error));
-
-    resp.setContentType("application/json");
     resp.setCharacterEncoding(Charsets.UTF_8.displayName());
-    resp.getWriter().println(json);
+    
+    String callback = req.getParameter("callback");
+    if (callback != null) {
+    	String rid = req.getParameter("rid");
+    	String data = new Gson().toJson(ImmutableMap.of("rid", rid, "point", ll, "radius",
+    	        error));
+    	resp.getWriter().printf("%s(%s);", callback, data);
+    } else {
+    	resp.setContentType("application/json");
+    	resp.setCharacterEncoding(Charsets.UTF_8.displayName());
+    	resp.getWriter().println(json);
+    }
   }
 }
