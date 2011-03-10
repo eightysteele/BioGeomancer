@@ -103,8 +103,8 @@ class BaseHandler(webapp.RequestHandler):
         self.response.out.write(open(path, 'r').read())
 
 class LocalityTypeApi(BaseHandler):
-    EMAIL = 'eightysteele@gmail.com'
-    PASSWORD = 'f00kie22'
+    EMAIL = ''
+    PASSWORD = ''
     def get(self):
         self.post()
         
