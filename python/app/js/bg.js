@@ -57,7 +57,8 @@ app.displayResults = function(results) {
         marker = new google.maps.Marker(
             {
                 position: center,
-                title: r.formatted_address
+                title: r.formatted_address,
+                map: app.map
             }
         );
         extent = app.getExtent(bounds);
@@ -76,7 +77,7 @@ app.callbacks = {};
 app.radiusCallback = function(marker, r, extent, url, x) {
     return function(radius) {
         url = url.replace('&callback=app.handleData', '');
-        marker.setMap(app.map);
+        //marker.setMap(app.map);
         google.maps.event.addListener(
             marker, 
             'click', 
