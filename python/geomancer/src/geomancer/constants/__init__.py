@@ -500,7 +500,6 @@ class Datum(object):
 
 if __name__ == '__main__':
     print Datum.ids()
-    print Datum.all()
     print Datum.has_id('Foo')
     print Datum.has_id('KOREAN_GEODETIC_SYSTEM_1995')
     print Datum.get('KOREAN_GEODETIC_SYSTEM_1995')
