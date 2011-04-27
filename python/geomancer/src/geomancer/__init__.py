@@ -47,11 +47,9 @@ class LatLng(object):
             lng = -lng
         return lng
     
-    def __init__(self, lng, lat, lngdir=None, latdir=None):
+    def __init__(self, lng, lat):
         self._lng = lng
         self._lat = lat
-        self._lngdir = lngdir
-        self._latdir = latdir
         
     def getlng(self):
         return self._lng
@@ -60,14 +58,6 @@ class LatLng(object):
     def getlat(self):
         return self._lat
     lat = property(fget=getlat)
-
-    def getlngdir(self):
-        return self._lngdir
-    lngdir = property(fget=getlngdir)
-
-    def getlatdir(self):
-        return self._latdir
-    latdir = property(fget=getlatdir)
 
     def valid(self):
         return self.lat >= -90 and self.lat <= 90 \
@@ -85,14 +75,6 @@ class Coordinates(object):
         return self._config.get('datum')
     datum = property(fget=get_datum)
             
-    def get_latdir(self):
-        return self._config.get('latdir')
-    latdir = property(fget=get_latdir)
-
-    def get_lngdir(self):
-        return self._config.get('lngdir')
-    lngdir = property(fget=get_lngdir)
-
     def get_point(self):
         return self._config.get('point')
     point = property(fget=get_point)
