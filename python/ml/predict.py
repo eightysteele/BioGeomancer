@@ -63,7 +63,7 @@ def classify(datafile):
     majority = orange.MajorityLearner(data)
     bayes = orange.BayesLearner(data)
     tree = orngTree.TreeLearner(data, sameMajorityPruning=1, mForPruning=2)
-    knn = orange.kNNLearner(data, k=1000)
+    knn = orange.kNNLearner(data, k=21)
 
     majority.name="Majority"; bayes.name="Naive Bayes";
     tree.name="Tree"; knn.name="kNN"
@@ -79,7 +79,7 @@ def classify(datafile):
     print
 
     # classify first 10 instances and print probabilities
-    for example in data[:100]:
+    for example in data[:10]:
         print "(%-10s)  " % (example.getclass()),
         for c in classifiers:
             p = apply(c, [example, orange.GetProbabilities])
