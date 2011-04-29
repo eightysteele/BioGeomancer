@@ -68,17 +68,24 @@ class MetersPerDegree(object):
         d = self._datum
         p = self._point
         a = d.axis
-        f = d.flattening
+        f = 1.0/d.flattening
         e = 2.0 * f - math.pow(f, 2.0)
         lat = p.lat
         
         # Radius of curvature in the prime vertical:
+        # N is the radius of curvature in the prime vertical. It's tangent to
+        # ellipsoid at the latitude: N(lat) = a/(1-e^2*sin^2(lat))^0.5
         n = a / math.sqrt(1.0 -e * (math.pow(math.sin(lat * math.pi / 180.0), 2.0)))
 
         # Radius of curvature in the prime meridian:
+        # M is the radius of curvature in the prime meridian. It's tangent to
+        # ellipsoid at the latitude: M(lat) = a(1-e^2)/(1-e^2*sin^2(lat))^1.5
         m = a * (1.0 - e) / math.pow(1.0 - e * math.pow(math.sin(lat * math.pi / 180.0), 2.0), 1.5)
 
         # Orthogonal distance to the polar axis
+        # Longitude is irrelevant for the calculations to follow so simplify by
+        # using longitude = 0, such that Y = 0 and X = Ncos(lat)cos(long). Note
+        # that long = 0, so cos(long) = 1.0.
         x = n * math.cos(lat * math.pi / 180.0) * 1.0
 
         self._mlat = math.pi * m / 180.0
@@ -128,7 +135,7 @@ class PaperMap(object):
 
         # Calculates point longitude:
         lng = corner.lng + lngdelta
-        lng = 1.0 * round(lng * 10000000) / 10000000
+        lng = 1.0 * round(lng * 10000000.0) / 10000000.0
 
         return Point(lng, lat)
 
