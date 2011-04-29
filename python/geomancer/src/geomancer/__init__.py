@@ -20,8 +20,8 @@ __author__ = "Aaron Steele and John Wieczorek"
 
 import math
 
-import constants import convert_distance
-import constants import DistanceUnit
+from constants import convert_distance
+from constants import DistanceUnit
 
 class Point(object):
     def __init__(self, lng, lat):
@@ -124,11 +124,11 @@ class PaperMap(object):
 
         # Calulates point latitude:
         lat = corner.lat + latdelta
-        lat = 1.0 * math.round(lat * 10000000.0) / 10000000.0
+        lat = 1.0 * round(lat * 10000000.0) / 10000000.0
 
         # Calculates point longitude:
-        lng = cornder.lng + lngdelta
-        lng = 1.0 * math.round(lng * 10000000) / 10000000
+        lng = corner.lng + lngdelta
+        lng = 1.0 * round(lng * 10000000) / 10000000
 
         return Point(lng, lat)
 
