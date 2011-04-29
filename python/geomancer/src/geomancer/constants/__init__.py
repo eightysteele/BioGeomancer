@@ -33,61 +33,61 @@ class _DistanceConversion(object):
         return 3280.8399
     @constant
     def KILOMETER_PER_FEET():
-        return 1 / 3280.8399
+        return 1.0 / 3280.8399
     @constant
     def FEET_PER_METER():
         return 3.2808399
     @constant
     def METER_PER_FEET():
-        return 1 / 3.2808399
+        return 1.0 / 3.2808399
     @constant
     def FEET_PER_MILE():
         return 5280
     @constant
     def MILE_PER_FEET():
-        return 1 / 5280
+        return 1.0 / 5280
     @constant
     def FEET_PER_YARD():
         return 3
     @constant
     def YARD_PER_FEET():
-        return 1 / 3
+        return 1.0 / 3
     @constant
     def METER_PER_KILOMETER():
         return 1000
     @constant
     def KILOMETER_PER_METER():
-        return 1 / 1000
+        return 1.0 / 1000
     @constant
     def METER_PER_MILE():
         return 1609.344
     @constant
     def MILE_PER_METER():
-        return 1 / 1609.344
+        return 1.0 / 1609.344
     @constant
     def METER_PER_YARD():
         return 0.9144
     @constant
     def YARD_PER_METER():
-        return 1 / 0.9144
+        return 1.0 / 0.9144
     @constant
     def YARD_PER_KILOMETER():
         return 1093.6133
     @constant
     def KILOMETER_PER_YARD():
-        return 1 / 1093.6133
+        return 1.0 / 1093.6133
     @constant
     def YARD_PER_MILE():
         return 1760
     @constant
     def MILE_PER_YARD():
-        return 1 / 1760
+        return 1.0 / 1760
     @constant
     def MILE_PER_KILOMETER():
         return 0.621371192
     @constant
     def KILOMETER_PER_MILE():
-        return 1 / 0.621371192
+        return 1.0 / 0.621371192
 
 DistanceConversion = _DistanceConversion()
 
@@ -124,16 +124,18 @@ _conversions = [
 ]
 
 _conversion_map = {}
+
 for unit in [DistanceUnit.FOOT, DistanceUnit.KILOMETER, DistanceUnit.METER,
              DistanceUnit.MILE, DistanceUnit.YARD]:
     _conversion_map[unit] = {}
+
 for c in _conversions:
     _conversion_map.get(c.du_from)[c.du_to] = c
 
 def convert_distance(value, dufrom, duto):
     if dufrom == duto:
         return value
-    return value / _conversion_map.get(dufrom).get(duto).factor
+    return float(value) / _conversion_map.get(dufrom).get(duto).factor
 
 # ==============================================================================
 # Direction
