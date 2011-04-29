@@ -44,6 +44,7 @@ class PaperMapTest(unittest.TestCase):
         map = PaperMap(DistanceUnit.KILOMETER, Datum.NAD27_NORTH_AMERICAN_1927)
         corner = Point(1, 2)
         point = map.getpoint(corner, ndist=1, edist=1)
+        logging.info(point)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)

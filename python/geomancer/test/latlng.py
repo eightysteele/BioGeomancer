@@ -34,8 +34,15 @@ class LatLngTest(unittest.TestCase):
     """Provides unit testing for FieldType class."""
     
     def test_degrees_from_dms(self):
-        lat = LatLng.degrees_from_dms(1, 2, 3)
-        #self.assertTrue(lat == 12)
+        lat = LatLng.degrees_from_dms(1, 2, 3, 'south')
+        self.assertTrue(lat == -1.0341667)
+        
+        try:
+            LatLng.degrees_from_dms(None, None, None)
+            self.fail()
+        except:
+            pass
+        
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)

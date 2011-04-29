@@ -20,8 +20,8 @@ __author__ = "Aaron Steele and John Wieczorek"
 
 import math
 
-import constants import convert_distance
-import constants import DistanceUnit
+from constants import convert_distance
+from constants import DistanceUnit
 
 class Point(object):
     def __init__(self, lng, lat):
