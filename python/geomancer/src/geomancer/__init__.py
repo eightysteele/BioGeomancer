@@ -18,80 +18,119 @@ __author__ = "Aaron Steele and John Wieczorek"
 
 """This module provides classes for calculating georeferencing errors."""
 
-import copy
 import math
 
-from constants import *
+import constants import convert_distance
+import constants import DistanceUnit
 
-class LatLng(object):
-    
-    @staticmethod
-    def degrees_from_dms(d, m, s):
-        return math.fabs(s / 3600.0) + math.fabs(m / 60.0) + math.fabs(d)
-
-    @staticmethod
-    def degrees_from_dm(d, m):
-        return math.fabs(m / 60.0) + math.fabs(d)
-    
-    @staticmethod
-    def lat_from_dms(d, m, s, direction):
-        lat = LatLng.degress_from_dms(d, m, s)
-        if direction is Direction.SOUTH:
-            lat = -lat
-        return lat
-
-    @staticmethod
-    def lng_from_dms(lngdeg, lngmin, lngsec, lngdir):
-        lng = LatLng.degress_from_dms(d, m, s)
-        if direction is Directions.WEST:
-            lng = -lng
-        return lng
-    
+class Point(object):
     def __init__(self, lng, lat):
         self._lng = lng
         self._lat = lat
-        
+
     def getlng(self):
         return self._lng
-    lng = property(fget=getlng)
+    lng = property(getlng)
 
     def getlat(self):
         return self._lat
-    lat = property(fget=getlat)
+    lat = property(getlat)
 
-    def valid(self):
-        return self.lat >= -90 and self.lat <= 90 \
-            and self.lng >= -180 and self.lng <= 180
+    def isvalid(self):
+        pass
 
     def __str__(self):
         return str(self.__dict__)
 
-class Coordinates(object):
+class MetersPerDegree(object):
+    def __init__(self, point, datum):
+        self._point = point
+        self._datum = datum
+        self._calculate()
+
+    def getpoint(self):
+        return self._point
+    point = property(getpoint)
+
+    def getdatum(self):
+        return self._datum
+    datum = property(getdatum)
+
+    def getmlat(self):
+        return self._mlat
+    mlat = property(getmlat)
+
+    def getmlng(self):
+        return self._mlng
+    mlng = property(getmlng)
     
-    def __init__(self, config):
-        self._config = copy.copy(config)
+    def _calculate(self):
+        d = self._datum
+        p = self._point
+        a = d.axis
+        f = d.flattening
+        e = 2.0 * f - math.pow(f, 2.0)
+        lat = p.lat
         
-    def get_datum(self):
-        return self._config.get('datum')
-    datum = property(fget=get_datum)
-            
-    def get_point(self):
-        return self._config.get('point')
-    point = property(fget=get_point)
+        # Radius of curvature in the prime vertical:
+        n = a / math.sqrt(1.0 -e * (math.pow(math.sin(lat * math.pi / 180.0), 2.0)))
 
-    def get_source(self):
-        return self._config.get('source')
-    source = property(fget=get_source)
+        # Radius of curvature in the prime meridian:
+        m = a * (1.0 - e) / math.pow(1.0 - e * math.pow(math.sin(lat * math.pi / 180.0), 2.0), 1.5)
 
-    def get_system(self):
-        return self._config.get('system')
-    system = property(fget=get_system)
+        # Orthogonal distance to the polar axis
+        x = n * math.cos(lat * math.pi / 180.0) * 1.0
 
-    def get_unit(self):
-        return self._config.get('unit')
-    unit = property(fget=get_unit)
+        self._mlat = math.pi * m / 180.0
+        self._mlng = math.pi * x / 180.0
+                          
 
-if __name__ == '__main__':
-    c = Coordinates({'point': LatLng(1, 2)})
-    print c.point
+class PaperMap(object):
+    def __init__(self, unit, datum):
+        self._unit = unit
+        self._datum = datum
 
+    def getunit(self):
+        return self._unit
+    unit = property(getunit)
+
+    def getdatum(self):
+        return self._datum
+    datum = property(getdatum)
+
+    def getpoint(self, corner, ndist=None, sdist=None, edist=None, wdist=None):
+        # TODO: Calculations should be based on great circles.
+
+        if (not ndist and not sdist) or (not edist and not wdist):
+            return None
+        
+        mpd = MetersPerDegree(corner, self.datum)
+
+        # Calculates latitude delta:
+        if ndist:
+            distmeters = convert_distance(ndist, self.unit, DistanceUnit.METER)
+            latdelta = distmeters / mpd.mlat
+        else:
+            distmeters = convert_distance(sdist, self.unit, DistanceUnit.METER)
+            latdelta = -(distmeters / mpd.mlat)
+        
+        # Calculates longitude delta:
+        if edist:
+            distmeters = convert_distance(edist, self.unit, DistanceUnit.METER)
+            lngdelta = distmeters / mpd.mlng
+        else:
+            distmeters = convert_distance(wdist, self.unit, DistanceUnit.METER)
+            lngdelta = -(distmeters / mpd.mlng)
+
+        # Calulates point latitude:
+        lat = corner.lat + latdelta
+        lat = 1.0 * math.round(lat * 10000000.0) / 10000000.0
+
+        # Calculates point longitude:
+        lng = cornder.lng + lngdelta
+        lng = 1.0 * math.round(lng * 10000000) / 10000000
+
+        return Point(lng, lat)
+
+
+        
