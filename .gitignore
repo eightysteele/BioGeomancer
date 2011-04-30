@@ -25,3 +25,5 @@ production.ini
 # EMACS temp files #
 ####################
 *.*~
+#*
+.#*

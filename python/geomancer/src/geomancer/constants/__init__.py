@@ -293,6 +293,12 @@ CoordinateSource = _CoordinateSource()
 # ==============================================================================
 # Datum
 
+
+class D(object):
+    def __init__(self):
+        dr = csv.DictReader(open('datums.csv', 'r'), skipinitialspace=True)
+        er = csv.DictReader(open('ellipsoids.csv', 'r'), skipinitialspace=True)
+
 class _Datum(object):    
     def __init__(self, name, ellipsoidName, flatting, axis):
         self._name = name
