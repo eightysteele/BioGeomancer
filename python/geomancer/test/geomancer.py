@@ -44,8 +44,16 @@ class PaperMapTest(unittest.TestCase):
         map = PaperMap(DistanceUnit.KILOMETER, Datum.NAD27_NORTH_AMERICAN_1927)
         corner = Point(1, 2)
         point = map.getpoint(corner, ndist=1, edist=1)
-        logging.info(point)
-
+        self.assertEqual(point.lat, 2.0090442)
+        self.assertEqual(point.lng, 1.0089885)
+        for unit in DistanceUnit.all():
+            for datum in Datum.all():
+                map = PaperMap(unit, datum)
+                point = map.getpoint(corner, ndist=1, edist=1)
+                backagain = map.getpoint(point, sdist=1, wdist=1)
+                self.assertEqual(corner.lat,backagain.lat)
+                self.assertEqual(corner.lng,backagain.lng)
+        
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     unittest.main()
