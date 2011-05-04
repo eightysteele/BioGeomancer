@@ -139,5 +139,30 @@ class PaperMap(object):
 
         return Point(lng, lat)
 
+def sqr(x):
+    '''Square of x.'''
+    return x * x
 
-        
+def DatumTransformToWGS84(lng, lat, a, f, dx, dy, dz):
+    '''
+    Return a lng, lat in WGS84 given a lng, lat, semi-major axis, inverse flattening, and
+    cartesian offsets in x, y, z for the original datum.
+    '''
+    '''
+    RADIANS is constant representing the number by which to multiply a value in degrees
+    to get the equivalent value in radians.
+    '''
+    RADIANS = 0.017453292519943295
+    A_WGS84 = 6378137.0
+    F_WGS84 = 1.0/298.257223563 
+    latr = lat*RADIANS
+    lngr = lng*RADIANS
+    da = A_WGS84 - a
+    df = F_WGS84 - f
+    e_squared = f*(2-f)
+    rho = a*(1-e_squared)/math.pow((1-e_squared*sqr(math.sin(latr))),1.5)
+    nu = a/math.pow((1-e_squared*sqr(math.sin(latr))),0.5)
+    dlat = (1/rho)*(-dx*math.sin(latr)*math.cos(lngr) - dy*math.sin(latr)*math.sin(lngr) + dz*math.cos(latr) + (f*da + a*df)*math.sin(2*latr))
+    dlng = (-dx*math.sin(lngr) + dy*math.cos(lngr))/(nu*math.cos(latr))
+    
+    return (lng + dlng/RADIANS, lat + dlat/RADIANS)
