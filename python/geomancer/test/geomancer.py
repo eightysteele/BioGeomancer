@@ -28,32 +28,51 @@ import unittest
 sys.path = [os.path.abspath(os.path.realpath('../src'))] + sys.path
 
 # Geomancer module imports:
+import geomancer
 from geomancer import Point, MetersPerDegree, PaperMap
-from geomancer.constants import Datum, DistanceUnit
+from geomancer.constants import Datums, DistanceUnit, convert_distance
 
-class PointTest(unittest.TestCase):
-    def test_init(self):
-        pass
+class DistanceConversionTest(unittest.TestCase):
+    def test_convert(self):
+        val = convert_distance(1, DistanceUnit.KILOMETER, DistanceUnit.MILE)        
+        logging.info('Val = ' + str(val))
+        self.assertEqual(val, 1)
 
-class MetersPerDegreeTest(unittest.TestCase):
-    def test_init(self):
-        pass
+# class PointTest(unittest.TestCase):
+#     def test_init(self):
+#         pass
 
-class PaperMapTest(unittest.TestCase):
-    def test_getpoint(self):
-        map = PaperMap(DistanceUnit.KILOMETER, Datum.NAD27_NORTH_AMERICAN_1927)
-        corner = Point(1, 2)
-        point = map.getpoint(corner, ndist=1, edist=1)
-        self.assertEqual(point.lat, 2.0090442)
-        self.assertEqual(point.lng, 1.0089885)
-        for unit in DistanceUnit.all():
-            for datum in Datum.all():
-                map = PaperMap(unit, datum)
-                point = map.getpoint(corner, ndist=1, edist=1)
-                backagain = map.getpoint(point, sdist=1, wdist=1)
-                self.assertEqual(corner.lat,backagain.lat)
-                self.assertEqual(corner.lng,backagain.lng)
-        
+# class MetersPerDegreeTest(unittest.TestCase):
+#     def test_init(self):
+#         pass
+
+# class PaperMapTest(unittest.TestCase):
+#     pass
+#     def test_getpoint(self):
+#         corner = Point(1, 2)
+#         for unit in DistanceUnit.all():
+#             for datum in Datums.all():
+#                 papermap = PaperMap(unit, datum)
+#                 point = papermap.getpoint(corner, ndist=1, edist=1)
+#                 backagain = papermap.getpoint(point, sdist=1, wdist=1)
+#                 self.assertEqual(corner.lat,backagain.lat)
+#                 self.assertEqual(corner.lng,backagain.lng)
+
+# class DatumTest(unittest.TestCase):
+#     def test_datum(self):
+#         logging.info(Datums.WGS84)
+#         logging.info(Datums.fromcode('WGS84'))
+#         logging.info(Datums.codes())
+#         for d in Datums.all():
+#             logging.info(d)
+
+# class DistanceUnitTest(unittest.TestCase):
+#     def test_distanceunit(self):
+#         logging.info(DistanceUnit.METER)
+#         logging.info(DistanceUnit.units())
+#         for d in DistanceUnit.all():
+#             logging.info(d)
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     unittest.main()
