@@ -253,12 +253,16 @@ CoordinateSource = _CoordinateSource()
 # Datum
 
 class Datum(object):
-    def __init__(self, name, code, ellipsoidCode, flatting, axis):
+    def __init__(self, name, code, ellipsoid_name, ellipsoid_code, flatting, axis, dx, dy, dz):
         self._name = name
         self._code = code
-        self._ellipsoidCode = ellipsoidCode
+        self._ellipsoid_name = ellipsoid_name
+        self._ellipsoid_code = ellipsoid_code
         self._flattening = flatting
         self._axis = axis
+        self._dx = dx
+        self._dy = dy
+        self._dz = dz
 
     def get_name(self):
         return self._name
@@ -268,9 +272,13 @@ class Datum(object):
         return self._code
     code = property(getcode)
 
-    def get_ellipsoidCode(self):
-        return self._ellipsoidCode
-    ellipsoidCode = property(get_ellipsoidCode)
+    def get_ellipsoid_name(self):
+        return self._ellipsoid_name
+    ellipsoid_name = property(get_ellipsoid_name)
+
+    def get_ellipsoid_code(self):
+        return self._ellipsoid_code
+    ellipsoid_code = property(get_ellipsoid_code)
     
     def get_flattening(self):
         return self._flattening
@@ -279,6 +287,18 @@ class Datum(object):
     def get_axis(self):
         return self._axis
     axis = property(get_axis)
+
+    def get_dx(self):
+        return self._dx
+    dx = property(get_dx)
+
+    def get_dy(self):
+        return self._dy
+    dy = property(get_dy)
+
+    def get_dz(self):
+        return self._dz
+    dz = property(get_dz)
     
     def __str__(self):
         return str(self.__dict__)
@@ -286,7 +306,7 @@ class Datum(object):
 def _build_datums_class():
     """Dynamically builds the Datums class from data in a CSV file."""
     path = os.path.abspath(os.path.dirname(os.path.realpath(geomancer.__file__)))
-    path = os.path.join(path, 'constants', 'DatumsForDistances.csv')
+    path = os.path.join(path, 'constants', 'DatumsForTransformation.csv')
     dr = csv.DictReader(open(path, 'r'), skipinitialspace=True)
     props = {}
     datums = {}
@@ -294,9 +314,13 @@ def _build_datums_class():
         code = row['DatumCode']
         name = row['DatumName']
         ecode = row['EllipsoidCode']
+        ename = row['EllipsoidName']
+        dx = int(row['dX'])
+        dy = int(row['dY'])
+        dz = int(row['dZ'])
         f = float(row['Flattening'] or -1)
         a = float(row['SemiMajorAxis'] or -1)
-        d = Datum(name, code, ecode, f, a)
+        d = Datum(name, code, ename, ecode, f, a, dx, dy, dz)
         props[code] = d
         datums[code] = d
     

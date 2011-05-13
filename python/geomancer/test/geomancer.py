@@ -32,11 +32,11 @@ import geomancer
 from geomancer import Point, MetersPerDegree, PaperMap
 from geomancer.constants import Datums, DistanceUnit, convert_distance
 
-class DistanceConversionTest(unittest.TestCase):
-    def test_convert(self):
-        val = convert_distance(1, DistanceUnit.KILOMETER, DistanceUnit.MILE)        
-        logging.info('Val = ' + str(val))
-        self.assertEqual(val, 1)
+# class DistanceConversionTest(unittest.TestCase):
+#     def test_convert(self):
+#         val = convert_distance(1, DistanceUnit.KILOMETER, DistanceUnit.MILE)        
+#         logging.info('Val = ' + str(val))
+#         self.assertEqual(val, 1)
 
 # class PointTest(unittest.TestCase):
 #     def test_init(self):
@@ -58,13 +58,13 @@ class DistanceConversionTest(unittest.TestCase):
 #                 self.assertEqual(corner.lat,backagain.lat)
 #                 self.assertEqual(corner.lng,backagain.lng)
 
-# class DatumTest(unittest.TestCase):
-#     def test_datum(self):
-#         logging.info(Datums.WGS84)
-#         logging.info(Datums.fromcode('WGS84'))
-#         logging.info(Datums.codes())
-#         for d in Datums.all():
-#             logging.info(d)
+class DatumTest(unittest.TestCase):
+    def test_datum(self):
+        logging.info(Datums.AGD84)
+        logging.info(Datums.fromcode('AGD84'))
+        logging.info(Datums.codes())
+        for d in Datums.all():
+            logging.info(d)
 
 # class DistanceUnitTest(unittest.TestCase):
 #     def test_distanceunit(self):
