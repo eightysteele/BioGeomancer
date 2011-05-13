@@ -143,6 +143,10 @@ def sqr(x):
     '''Square of x.'''
     return x * x
 
+def point2wgs84(point, datum):
+    """Converts a point in a given datum to a point in WGS84."""
+    pass # TODO
+
 def DatumTransformToWGS84(lng, lat, a, f, dx, dy, dz):
     '''
     Return a lng, lat in WGS84 given a lng, lat, semi-major axis, inverse flattening, and
