@@ -146,7 +146,11 @@ def sqr(x):
 def DatumTransformToWGS84(lng, lat, a, f, dx, dy, dz):
     '''
     Return a lng, lat in WGS84 given a lng, lat, semi-major axis, inverse flattening, and
-    cartesian offsets in x, y, z for the original datum.
+    cartesian offsets in x, y, z for the original datum. Uses the Abridged Molodensky Transformation.
+    See: 
+    Deakin, R.E. 2004. THE STANDARD AND ABRIDGED MOLDENSKY COORDINATE TRANSFORMATION FORMULAE. 
+    Department of Mathematical and Geospatial Sciences, RMIT University.
+    user.gs.rmit.edu.au/rod/files/publications/Molodensky%20V2.pdf
     '''
     '''
     RADIANS is constant representing the number by which to multiply a value in degrees
