@@ -143,9 +143,56 @@ def sqr(x):
     '''Square of x.'''
     return x * x
 
+def lng180(lng):
+    '''Given a longitude in degrees, returns a longitude in degrees between {-180, 180].'''
+    newlng = float(lng)
+    if lng <= -180:
+        return lng + 360
+    if newlng > 180:
+        return lng - 360
+    return lng
+
 def point2wgs84(point, datum):
-    """Converts a point in a given datum to a point in WGS84."""
-    pass # TODO
+    """Converts a point (lng, lat) in a given datum to a point in WGS84."""
+    '''
+    Uses the Abridged Molodensky Transformation.
+    See: 
+    Deakin, R.E. 2004. THE STANDARD AND ABRIDGED MOLDENSKY COORDINATE TRANSFORMATION FORMULAE. 
+    Department of Mathematical and Geospatial Sciences, RMIT University.
+    http://user.gs.rmit.edu.au/rod/files/publications/Molodensky%20V2.pdf
+    '''
+    latr = math.radians(point[1])
+    lngr = math.radians(point[0])
+    
+    '''Semi-major axis of WGS84.'''
+    A_WGS84 = 6378137.0
+    
+    '''Inverse flattening of WGS84.'''
+    F_WGS84 = 1.0/298.257223563
+    
+    '''Semi-major axis of given datum.'''
+    a = datum.get_axis()
+    
+    '''Flattening of given datum (get_flattening actually return the inverse flattening).'''
+    f = 1.0/datum.get_flattening()
+    dx = datum.get_dx()
+    dy = datum.get_dy()
+    dz = datum.get_dz()
+    
+    '''Difference in the semi-major axes.'''
+    da = A_WGS84 - datum.get_axis()
+    
+    '''Difference in the flattenings.'''
+    df = F_WGS84 - datum.get_flattening()
+    
+    e_squared = f*(2-f)
+    rho = a*(1-e_squared)/math.pow((1-e_squared*sqr(math.sin(latr))),1.5)
+    nu = a/math.pow((1-e_squared*sqr(math.sin(latr))),0.5)
+    dlat = (1/rho)*(-dx*math.sin(latr)*math.cos(lngr) - dy*math.sin(latr)*math.sin(lngr) + dz*math.cos(latr) + (f*da + a*df)*math.sin(2*latr))
+    dlng = (-dx*math.sin(lngr) + dy*math.cos(lngr))/(nu*math.cos(latr))
+    newlng = lng180(math.degrees(lngr + dlng))
+    newlat = math.degrees(latr + dlat)
+    return (newlng, newlat)
 
 def DatumTransformToWGS84(lng, lat, a, f, dx, dy, dz):
     '''
