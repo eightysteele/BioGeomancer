@@ -215,8 +215,8 @@ def DatumTransformToWGS84(lng, lat, a, f, dx, dy, dz):
     da = A_WGS84 - a
     df = F_WGS84 - f
     e_squared = f*(2-f)
-    rho = a*(1-e_squared)/math.pow((1-e_squared*sqr(math.sin(latr))),1.5)
-    nu = a/math.pow((1-e_squared*sqr(math.sin(latr))),0.5)
+    rho = a*(1-e_squared)/math.pow((1-e_squared * math.pow(math.sin(latr), 2)),1.5)
+    nu = a/math.pow((1-e_squared * math.pow(math.sin(latr), 2)),0.5)
     dlat = (1/rho)*(-dx*math.sin(latr)*math.cos(lngr) - dy*math.sin(latr)*math.sin(lngr) + dz*math.cos(latr) + (f*da + a*df)*math.sin(2*latr))
     dlng = (-dx*math.sin(lngr) + dy*math.cos(lngr))/(nu*math.cos(latr))
     

@@ -253,7 +253,8 @@ CoordinateSource = _CoordinateSource()
 # Datum
 
 class Datum(object):
-    def __init__(self, name, code, ellipsoid_name, ellipsoid_code, flatting, axis, dx, dy, dz):
+    def __init__(self, name, code, ellipsoid_name, ellipsoid_code, flatting, axis, dx, dy, dz, epsgcode, rmserror):
+        # TODO: This param list is out of control... maybe make it a dict instead.
         self._name = name
         self._code = code
         self._ellipsoid_name = ellipsoid_name
@@ -263,6 +264,8 @@ class Datum(object):
         self._dx = dx
         self._dy = dy
         self._dz = dz
+        self._epsgcode = epsgcode
+        self._rmserror = rmserror
 
     def get_name(self):
         return self._name
@@ -300,16 +303,25 @@ class Datum(object):
         return self._dz
     dz = property(get_dz)
     
+    def get_epsgcode(self):
+        return self._epsgcode
+    epsgcode = property(get_epsgcode)
+
+    def get_rmserror(self):
+        return self._rmserror
+    rmserror = property(get_rmserror)
+
     def __str__(self):
         return str(self.__dict__)
 
 def _build_datums_class():
     """Dynamically builds the Datums class from data in a CSV file."""
     path = os.path.abspath(os.path.dirname(os.path.realpath(geomancer.__file__)))
-    path = os.path.join(path, 'constants', 'DatumsForTransformation.csv')
+    path = os.path.join(path, 'constants', 'DatumTransformationToWGS84Parameters.csv')
     dr = csv.DictReader(open(path, 'r'), skipinitialspace=True)
     props = {}
     datums = {}
+    epsgmap = {}
     for row in dr:
         code = row['DatumCode']
         name = row['DatumName']
@@ -320,10 +332,23 @@ def _build_datums_class():
         dz = int(row['dZ'])
         f = float(row['Flattening'] or -1)
         a = float(row['SemiMajorAxis'] or -1)
-        d = Datum(name, code, ename, ecode, f, a, dx, dy, dz)
+        epsgcode = None
+        try:
+            # Some datums don't have an EPSG code:
+            epsgcode = int(row['EPSGCode'])
+        except:
+            pass
+        rmserror = float(row['RMSError'])
+        d = Datum(name, code, ename, ecode, f, a, dx, dy, dz, epsgcode, rmserror)
         props[code] = d
         datums[code] = d
+        epsgmap[epsgcode] = d
     
+    @classmethod
+    def fromepsgcode(cls, epsgcode):
+        return epsgmap.get(epsgcode)
+    props['fromepsgcode'] = fromepsgcode
+
     @classmethod
     def codes(cls):
         return datums.keys()

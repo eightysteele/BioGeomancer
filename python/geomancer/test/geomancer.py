@@ -65,6 +65,7 @@ class DatumTest(unittest.TestCase):
         logging.info(Datums.codes())
         for d in Datums.all():
             logging.info(d)
+        logging.info('Datum with EPSG code 7001: ' + str(Datums.fromepsgcode(7001)))
 
 # class DistanceUnitTest(unittest.TestCase):
 #     def test_distanceunit(self):
