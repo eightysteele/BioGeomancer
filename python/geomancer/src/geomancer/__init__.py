@@ -19,6 +19,7 @@ __author__ = "Aaron Steele and John Wieczorek"
 """This module provides classes for calculating georeferencing errors."""
 
 import math
+import logging
 
 from constants import convert_distance
 from constants import DistanceUnit
@@ -216,3 +217,15 @@ def DatumTransformToWGS84(lng, lat, a, f, dx, dy, dz):
     dlng = (-dx*math.sin(lngr) + dy*math.cos(lngr))/(nu*math.cos(latr))
     
     return (lng + dlng/RADIANS, lat + dlat/RADIANS)
+
+def test_point2wgs84():
+    agd66point = Point(144.966666667, -37.8)
+    wgs84point = point2wgs84(agd66point, Datums.AGD84)
+    logging.info(wgs84point)
+    logging.info(Datums.AGD84)
+#    144.96797984155188, -37.798491994062296
+#    144.96798640000000, -37.798480400000000
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+    test_point2wgs84()

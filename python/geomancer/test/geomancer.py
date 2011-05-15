@@ -23,13 +23,14 @@ import logging
 import os
 import sys
 import unittest
+import math
 
 # Updates sys.path to include geomancer source:
 sys.path = [os.path.abspath(os.path.realpath('../src'))] + sys.path
 
 # Geomancer module imports:
 import geomancer
-from geomancer import Point, MetersPerDegree, PaperMap
+from geomancer import Point, MetersPerDegree, PaperMap, point2wgs84
 from geomancer.constants import Datums, DistanceUnit, convert_distance
 
 # class DistanceConversionTest(unittest.TestCase):
@@ -67,6 +68,15 @@ class DatumTest(unittest.TestCase):
             logging.info(d)
         logging.info('Datum with EPSG code 7001: ' + str(Datums.fromepsgcode(7001)))
 
+class Point2WGS84Test(unittest.TestCase):
+    def test_point2wgs84(self):
+        agd66point = Point(144.966666667, -37.8)
+        wgs84point = point2wgs84(agd66point, Datums.AGD84)
+        logging.info(wgs84point)
+        logging.info(Datums.AGD84)
+        self.assertTrue(math.fabs(-37.798480353567406 - wgs84point.lat) < 1e-7)
+        self.assertTrue(math.fabs(144.96798635963754 - wgs84point.lng) < 1e-7)
+
 # class DistanceUnitTest(unittest.TestCase):
 #     def test_distanceunit(self):
 #         logging.info(DistanceUnit.METER)
@@ -77,3 +87,4 @@ class DatumTest(unittest.TestCase):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     unittest.main()
+    Point2WGS84Test.test_point2wgs84()
