@@ -22,19 +22,20 @@ import math
 
 from constants import convert_distance
 from constants import DistanceUnit
+from constants import Datums
 
 class Point(object):
     def __init__(self, lng, lat):
         self._lng = lng
         self._lat = lat
 
-    def getlng(self):
+    def get_lng(self):
         return self._lng
-    lng = property(getlng)
+    lng = property(get_lng)
 
-    def getlat(self):
+    def get_lat(self):
         return self._lat
-    lat = property(getlat)
+    lat = property(get_lat)
 
     def isvalid(self):
         pass
@@ -153,7 +154,7 @@ def lng180(lng):
     return lng
 
 def point2wgs84(point, datum):
-    """Converts a point (lng, lat) in a given datum to a point in WGS84."""
+    """Converts a Point in a given datum to a Point in WGS84."""
     '''
     Uses the Abridged Molodensky Transformation.
     See: 
@@ -161,29 +162,23 @@ def point2wgs84(point, datum):
     Department of Mathematical and Geospatial Sciences, RMIT University.
     http://user.gs.rmit.edu.au/rod/files/publications/Molodensky%20V2.pdf
     '''
-    latr = math.radians(point[1])
-    lngr = math.radians(point[0])
-    
-    '''Semi-major axis of WGS84.'''
-    A_WGS84 = 6378137.0
-    
-    '''Inverse flattening of WGS84.'''
-    F_WGS84 = 1.0/298.257223563
+    latr = math.radians(point.lat)
+    lngr = math.radians(point.lng)
     
     '''Semi-major axis of given datum.'''
-    a = datum.get_axis()
+    a = datum.axis
     
     '''Flattening of given datum (get_flattening actually return the inverse flattening).'''
-    f = 1.0/datum.get_flattening()
-    dx = datum.get_dx()
-    dy = datum.get_dy()
-    dz = datum.get_dz()
+    f = 1.0/datum.flattening
+    dx = datum.dx
+    dy = datum.dy
+    dz = datum.dz
     
     '''Difference in the semi-major axes.'''
-    da = A_WGS84 - datum.get_axis()
+    da = Datums.WGS84.axis - a
     
     '''Difference in the flattenings.'''
-    df = F_WGS84 - datum.get_flattening()
+    df = 1.0/Datums.WGS84.flattening - f
     
     e_squared = f*(2-f)
     rho = a*(1-e_squared)/math.pow((1-e_squared*sqr(math.sin(latr))),1.5)
@@ -192,7 +187,7 @@ def point2wgs84(point, datum):
     dlng = (-dx*math.sin(lngr) + dy*math.cos(lngr))/(nu*math.cos(latr))
     newlng = lng180(math.degrees(lngr + dlng))
     newlat = math.degrees(latr + dlat)
-    return (newlng, newlat)
+    return Point(newlng, newlat)
 
 def DatumTransformToWGS84(lng, lat, a, f, dx, dy, dz):
     '''
