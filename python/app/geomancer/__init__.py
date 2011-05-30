@@ -20,6 +20,7 @@ __author__ = "Aaron Steele and John Wieczorek"
 
 import math
 import logging
+import simplejson
 
 from constants import convert_distance
 from constants import DistanceUnit
