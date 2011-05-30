@@ -24,6 +24,7 @@ import logging
 from constants import convert_distance
 from constants import DistanceUnit
 from constants import Datums
+from predict import GooglePredictionApi
 
 class Point(object):
     def __init__(self, lng, lat):
@@ -226,6 +227,32 @@ def test_point2wgs84():
 #    144.96797984155188, -37.798491994062296
 #    144.96798640000000, -37.798480400000000
 
+
+def predict(locality):
+    """Returns a locality type from Google Prediction API."""
+    pass # Aaron
+
+def geocode(locality):
+    """Returns a geocode response object from Google Geocode API."""
+    pass # Aaron
+
+def georef(geocode):
+    """Returns a Georeference from the Geomancer API."""
+    pass # John
+
+class Georeference(object):
+    def __init__(self, locality, point, error):
+        self.locality = locality
+        self.point = point
+        self.error = error
+
+def georeference(locality):
+    """Entry point to georeferencing."""
+    loctype = predict(locality)
+    if loctype == 'ADDR':
+        geocode = simplejson.loads(geocode(locality))
+        georef = georef(geocode)
+        
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     test_point2wgs84()
