@@ -236,7 +236,7 @@ def geocode(locality):
     """Returns a geocode response object from Google Geocode API."""
     pass # Aaron
 
-def georef(geocode):
+def georef(geocode, loctype=None):
     """Returns a Georeference from the Geomancer API."""
     pass # John
 

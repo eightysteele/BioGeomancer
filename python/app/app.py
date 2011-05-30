@@ -10,9 +10,11 @@ import logging
 import urllib
 import urllib2
 try:
-  import json
+    import json
 except ImportError:
-  from django.utils import simplejson as json
+    from django.utils import simplejson as json
+
+import geomancer
 
 # ==============================================================================
 # Google Prediction API
@@ -22,7 +24,7 @@ class GooglePredictionApi(object):
     @staticmethod
     def GetAuthentication(email, password):
         """Retrieves a Google authentication token.
-        """        
+        """
         url = 'https://www.google.com/accounts/ClientLogin'
         post_data = urllib.urlencode([
                 ('Email', email),
@@ -34,25 +36,25 @@ class GooglePredictionApi(object):
         result = urlfetch.fetch(url=url, payload=post_data, method=urlfetch.POST)
         content = '&'.join(result.content.split())
         query = cgi.parse_qs(content)
-        auth = query['Auth'][0]    
+        auth = query['Auth'][0]
         logging.info('Auth: ' + auth)
         return auth
-    
+
     @staticmethod
     def Predict(auth, model, query):
         url = ('https://www.googleapis.com/prediction/v1.1/training/'
-               '%s/predict' % urllib.quote(model, ''))        
+               '%s/predict' % urllib.quote(model, ''))
         headers = {
             'Content-Type': 'application/json',
             'Authorization': 'GoogleLogin auth=%s' % auth,
-            }    
-        post_data = GooglePredictionApi.GetPostData(query)        
+            }
+        post_data = GooglePredictionApi.GetPostData(query)
         logging.info('Post Data: '+ str(post_data))
         result = urlfetch.fetch(url=url, payload=post_data, method=urlfetch.POST, headers=headers)
         content = result.content
         logging.info('Content: ' + content)
         json_content = json.loads(content)['data']
-        
+
         scores = []
         print json.loads(content)
         # classification task
@@ -63,9 +65,9 @@ class GooglePredictionApi(object):
         # regression task
         else:
             prediction = json_content['outputValue']
-            
+
         return [prediction, scores]
-    
+
     @staticmethod
     def ExtractDictScores(jsonscores):
         scores = {}
@@ -77,18 +79,18 @@ class GooglePredictionApi(object):
                     score = value
             scores[label] = score
         return scores
-                
+
     @staticmethod
     def GetPostData(query):
         data_input = {}
         data_input['mixture'] = [query]
-        
+
         post_data = json.dumps({
                 'data': {
                     'input': data_input
                     }
                 })
-        return post_data    
+        return post_data
 
 # ===============================================================================
 # Request handlers
@@ -107,23 +109,43 @@ class LocalityTypeApi(BaseHandler):
     PASSWORD = ''
     def get(self):
         self.post()
-        
+
     def post(self):
         query = self.request.get('q')
+        results = self.predict(query)
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.out.write(results)
+        
+    @classmethod
+    def predict(cls, query):
         results = memcache.get(query)
         if not results:
-            auth = GooglePredictionApi.GetAuthentication(self.EMAIL, self.PASSWORD)
+            auth = GooglePredictionApi.GetAuthentication('eightysteele@gmail.com', '')
             model = 'biogeomancer/locs.csv'
             results = simplejson.dumps(GooglePredictionApi.Predict(auth, model, query))
             memcache.add(query, results)
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.out.write(results)
+        return results
+
+class GeoreferenceApi(BaseHandler):
+    def get(self):
+        return self.post()
+
+    def post(self):
+        locality = self.request.get('q')
+        params = urllib.urlencode([('address', locality), ('sensor', 'false')])
+        url = 'http://maps.googleapis.com/maps/api/geocode/json?%s' % params
+        geocode = simplejson.loads(urlfetch.fetch(url).content)
+        georef = geomancer.georef(geocode)
+        if georef is None:
+            loctype = LocalityTypeApi.predict(locality)[0]
+            georef = geomancer.georef(geocode, loctype)
+        
 
 class RootHandler(BaseHandler):
     def get(self):
         self.push_html("georef.html")
-        
-class GitHubPostReceiveHooksHandler(BaseHandler):    
+
+class GitHubPostReceiveHooksHandler(BaseHandler):
     def post(self):
         payload = self.request.get('payload')
         json = simplejson.loads(payload)
@@ -138,10 +160,11 @@ class GitHubPostReceiveHooksHandler(BaseHandler):
         mail.send_mail(sender="BioGeomancer <admin@biogeomancer.appspotmail.com>",
               to="Aaron <eightysteele@gmail.com>, John <tuco@berkeley.edu>",
               subject=title,
-              body=body)        
-        
+              body=body)
+
 application = webapp.WSGIApplication(
          [('/', RootHandler),
+          ('/api/georeference', GeoreferenceApi),
           ('/api/localities/type', LocalityTypeApi),
           ('/hooks/post-commit', GitHubPostReceiveHooksHandler), ],
          debug=True)
