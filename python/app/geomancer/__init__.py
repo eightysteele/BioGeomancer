@@ -346,7 +346,7 @@ def geocode(locality):
     """Returns a geocode response object from Google Geocode API."""
     pass # Aaron
 
-def georef(geocode, loctype=None):
+def georef_feature(geocode, loctype=None):
     """Returns a Georeference from the Geomancer API."""
     status = geocode.get('status')
     if status != 'OK':
@@ -358,7 +358,8 @@ def georef(geocode, loctype=None):
     g = geocode.get('results')[0].get('geometry')
     point = GeocodeResultParser.get_point(g)
     error = GeocodeResultParser.calc_error(g)
-    return (point, error)
+    return Georeference(point, error)
+    
 
 class Georeference(object):
     def __init__(self, locality, point, error):
@@ -369,9 +370,16 @@ class Georeference(object):
 def georeference(locality):
     """Entry point to georeferencing."""
     loctype = predict(locality)
-    if loctype == 'ADDR':
+    if loctype == 'ADDR' or loctype == 'F':
+        #Simple localities for which feature georef is the same as final georef.
         geocode = simplejson.loads(geocode(locality))
-        georef = georef(geocode)
+        georef = georef_feature(geocode)
+#    if loctype == 'FOH':
+        #Feature Offset Heading. Final georef uses feature georef starting point and extent.
+        #Need to parse locality for feature_name to geocode, plus offset and heading.
+#        geocode = simplejson.loads(geocode(feature_name))
+#        feature = georef_feature(geocode)
+        #georef uses feature's geocode as inputs to final georef
         
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
