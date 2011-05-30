@@ -24,6 +24,10 @@ import logging
 from constants import convert_distance
 from constants import DistanceUnit
 from constants import Datums
+'''
+A_WGS84 is the radius of the sphere at the equator for the WGS84 datum. 
+'''
+A_WGS84 = 6378137.0
 
 class Point(object):
     def __init__(self, lng, lat):
@@ -154,6 +158,37 @@ def lng180(lng):
         return lng - 360
     return lng
 
+def haversine_distance(start_lat_lng, end_lat_lng):
+    '''
+    Returns the distance along a great circle between two lat longs on the surface of a
+    sphere of radius SEMI_MAJOR_AXIS using the Haversine formula.
+    '''
+    dLat = math.radians(end_lat_lng[0] - start_lat_lng[0])
+    dLon = math.radians(end_lat_lng[1] - start_lat_lng[1]) 
+    '''a is the square of half the chord length between the points.'''
+    a = math.sin(dLat/2) * math.sin(dLat/2) + math.cos( math.radians(start_lat_lng[0]) ) * math.cos( math.radians(end_lat_lng[0]) ) * math.sin(dLon/2) * math.sin(dLon/2)
+    '''Account for rounding errors. If a is very close to 1 set it to one to avoid domain exception.'''
+    if math.fabs(1-a) < 1e-10:
+        a = 1
+    '''c is the angular distance in radians between the points.'''
+    x = math.sqrt(1-a)
+    y = math.sqrt(a)
+    c = 2 * math.atan2(y, x)
+    return A_WGS84 * c 
+    
+def errorFromGeometry(geometry):
+    if geometry.get('bounds') == None:
+        """Default error for a feature without a bounds entry is 100m."""
+        return 100
+    center = (geometry.get('location').get('lat'), geometry.get('location').get('lng'))
+    ne = (geometry.get('bounds').get('northeast').get('lat'), geometry.get('bounds').get('northeast').get('lng'))
+    sw = (geometry.get('bounds').get('southwest').get('lat'), geometry.get('bounds').get('southwest').get('lng'))
+    distne = haversine_distance(center, ne)
+    distsw = haversine_distance(center, sw)
+    if distne >= distsw:
+        return distne
+    return distsw
+    
 def point2wgs84(point, datum):
     """Converts a Point in a given datum to a Point in WGS84."""
     '''
@@ -199,15 +234,9 @@ def DatumTransformToWGS84(lng, lat, a, f, dx, dy, dz):
     Department of Mathematical and Geospatial Sciences, RMIT University.
     user.gs.rmit.edu.au/rod/files/publications/Molodensky%20V2.pdf
     '''
-    '''
-    RADIANS is constant representing the number by which to multiply a value in degrees
-    to get the equivalent value in radians.
-    '''
-    RADIANS = 0.017453292519943295
-    A_WGS84 = 6378137.0
     F_WGS84 = 1.0/298.257223563 
-    latr = lat*RADIANS
-    lngr = lng*RADIANS
+    latr = math.radians(lat)
+    lngr = math.radians(lng)
     da = A_WGS84 - a
     df = F_WGS84 - f
     e_squared = f*(2-f)
@@ -216,7 +245,7 @@ def DatumTransformToWGS84(lng, lat, a, f, dx, dy, dz):
     dlat = (1/rho)*(-dx*math.sin(latr)*math.cos(lngr) - dy*math.sin(latr)*math.sin(lngr) + dz*math.cos(latr) + (f*da + a*df)*math.sin(2*latr))
     dlng = (-dx*math.sin(lngr) + dy*math.cos(lngr))/(nu*math.cos(latr))
     
-    return (lng + dlng/RADIANS, lat + dlat/RADIANS)
+    return (lng + math.degrees(dlng), lat + math.degrees(dlat))
 
 def test_point2wgs84():
     agd66point = Point(144.966666667, -37.8)
