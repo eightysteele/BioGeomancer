@@ -97,7 +97,35 @@ class MetersPerDegree(object):
         self._mlat = math.pi * m / 180.0
         self._mlng = math.pi * x / 180.0
                           
-
+class GeocodeResultParser(object):
+    @classmethod
+    def get_point(cls, geometry):
+        """Assumes geometry exists."""
+        return (geometry.get('location').get('lng'), geometry.get('location').get('lat'))
+    
+    @classmethod
+    def get_bounds(cls, geometry):
+        """Assumes geometry exists."""
+        if geometry.has_key('bounds') == False:
+            return None
+        return geometry.get('bounds')
+    
+    @classmethod
+    def calc_error(cls, geometry):
+        """Assumes geometry exists."""
+        bb = get_bounds(geometry) 
+        if bb == None:
+            """Default error for a feature without a bounds entry is 100m."""
+            return 100
+        center = get_point(geometry)
+        ne = ( bb.get('northeast').get('lng'), bb.get('northeast').get('lat') )
+        sw = ( bb.get('southwest').get('lng'), bb.get('southwest').get('lat') )
+        distne = haversine_distance(center, ne)
+        distsw = haversine_distance(center, sw)
+        if distne >= distsw:
+            return distne
+        return distsw
+        
 class PaperMap(object):
     def __init__(self, unit, datum):
         self._unit = unit
@@ -176,19 +204,6 @@ def haversine_distance(start_lat_lng, end_lat_lng):
     c = 2 * math.atan2(y, x)
     return A_WGS84 * c 
     
-def errorFromGeometry(geometry):
-    if geometry.get('bounds') == None:
-        """Default error for a feature without a bounds entry is 100m."""
-        return 100
-    center = (geometry.get('location').get('lat'), geometry.get('location').get('lng'))
-    ne = (geometry.get('bounds').get('northeast').get('lat'), geometry.get('bounds').get('northeast').get('lng'))
-    sw = (geometry.get('bounds').get('southwest').get('lat'), geometry.get('bounds').get('southwest').get('lng'))
-    distne = haversine_distance(center, ne)
-    distsw = haversine_distance(center, sw)
-    if distne >= distsw:
-        return distne
-    return distsw
-    
 def point2wgs84(point, datum):
     """Converts a Point in a given datum to a Point in WGS84."""
     '''
@@ -255,6 +270,110 @@ def test_point2wgs84():
 #    144.96797984155188, -37.798491994062296
 #    144.96798640000000, -37.798480400000000
 
+def test_georef():
+    geocode = simplejson.loads("""{
+   "results" : [
+      {
+         "address_components" : [
+            {
+               "long_name" : "Mountain View",
+               "short_name" : "Mountain View",
+               "types" : [ "locality", "political" ]
+            },
+            {
+               "long_name" : "San Jose",
+               "short_name" : "San Jose",
+               "types" : [ "administrative_area_level_3", "political" ]
+            },
+            {
+               "long_name" : "Santa Clara",
+               "short_name" : "Santa Clara",
+               "types" : [ "administrative_area_level_2", "political" ]
+            },
+            {
+               "long_name" : "California",
+               "short_name" : "CA",
+               "types" : [ "administrative_area_level_1", "political" ]
+            },
+            {
+               "long_name" : "United States",
+               "short_name" : "US",
+               "types" : [ "country", "political" ]
+            }
+         ],
+         "formatted_address" : "Mountain View, CA, USA",
+         "geometry" : {
+            "bounds" : {
+               "northeast" : {
+                  "lat" : 37.4698870,
+                  "lng" : -122.0446720
+               },
+               "southwest" : {
+                  "lat" : 37.35654100000001,
+                  "lng" : -122.1178620
+               }
+            },
+            "location" : {
+               "lat" : 37.38605170,
+               "lng" : -122.08385110
+            },
+            "location_type" : "APPROXIMATE",
+            "viewport" : {
+               "northeast" : {
+                  "lat" : 37.42150620,
+                  "lng" : -122.01982140
+               },
+               "southwest" : {
+                  "lat" : 37.35058040,
+                  "lng" : -122.14788080
+               }
+            }
+         },
+         "types" : [ "locality", "political" ]
+      }
+   ],
+   "status" : "OK"
+}""")
+    logging.info(georef(geocode))
+    
+
+def predict(locality):
+    """Returns a locality type from Google Prediction API."""
+    pass # Aaron
+
+def geocode(locality):
+    """Returns a geocode response object from Google Geocode API."""
+    pass # Aaron
+
+def georef(geocode):
+    """Returns a Georeference from the Geomancer API."""
+    status = geocode.get('status')
+    if status != 'OK':
+        #Geocode failed, no results, no georeference possible.
+        return None
+    if geocode.get('results')[0].has_key('geometry') == False:
+        #First result has no geometry, no georeference possible.
+        return None
+    g = geocode.get('results')[0].get('geometry')
+    point = GeocodeResultParser.get_point(g)
+    error = GeocodeResultParser.calc_error(g)
+    return (point, error)
+
+class Georeference(object):
+    def __init__(self, locality, point, error):
+        self.locality = locality
+        self.point = point
+        self.error = error
+
+def georeference(locality):
+    """Entry point to georeferencing."""
+    loctype = predict(locality)
+    if loctype == 'ADDR':
+        geocode = simplejson.loads(geocode(locality))
+        georef = georef(geocode)
+        
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     test_point2wgs84()
+    test_georef()
+    
