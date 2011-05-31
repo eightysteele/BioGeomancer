@@ -3,6 +3,10 @@ version: github
 runtime: python
 api_version: 1
 
+builtins:
+- datastore_admin: on
+- appstats: on
+
 handlers:
 
 - url: /js
