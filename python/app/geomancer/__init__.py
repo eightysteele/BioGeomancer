@@ -400,9 +400,16 @@ def georeference(locality):
         else:
             error = 1000 # TODO
         return Georeference(point, error) # TODO 
-    elif loctype is 'foh':
+    elif loctype == 'foh':
         # TODO (John)
-        pass
+        result = locality.geocode.get('results')[0] # TODO handle multiple results
+        location = result.get('geometry').get('location')
+        point = Point(float(location.get('lat')), float(location.get('lng')))
+        if result.get('geometry').get('location_type') is 'ROOFTOP':
+            error = 100 # TODO
+        else:
+            error = 1000 # TODO
+        return Georeference(point, error) # TODO 
         
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
