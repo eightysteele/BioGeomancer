@@ -15,6 +15,23 @@ except ImportError:
     from django.utils import simplejson as json
 
 import geomancer
+from geomancer import Locality
+
+
+class GoogleGeocodeApi(object):
+    
+    @classmethod    
+    def execute(cls, locality):
+        """Executes geocode request for locality and returns response object."""
+        params = urllib.urlencode([('address', locality), ('sensor', 'false')])
+        url = 'http://maps.googleapis.com/maps/api/geocode/json?%s' % params
+        return simplejson.loads(urlfetch.fetch(url).content)
+        
+    @classmethod
+    def ispartialmatch(cls, result):
+        """Returns true if the geocode result was a partial match."""
+        return result.has_key('partial_match') and \
+               result.get('partial_match') is True
 
 # ==============================================================================
 # Google Prediction API
@@ -112,7 +129,7 @@ class LocalityTypeApi(BaseHandler):
 
     def post(self):
         query = self.request.get('q')
-        results = self.predict(query)
+        results = simplejson.dumps(self.predict(query))
         self.response.headers['Content-Type'] = 'application/json'
         self.response.out.write(results)
         
@@ -122,8 +139,8 @@ class LocalityTypeApi(BaseHandler):
         if not results:
             auth = GooglePredictionApi.GetAuthentication('eightysteele@gmail.com', '')
             model = 'biogeomancer/locs.csv'
-            results = simplejson.dumps(GooglePredictionApi.Predict(auth, model, query))
-            memcache.add(query, results)
+            results = GooglePredictionApi.Predict(auth, model, query)
+            #memcache.add(query, results)
         return results
 
 class GeoreferenceApi(BaseHandler):
@@ -131,15 +148,37 @@ class GeoreferenceApi(BaseHandler):
         return self.post()
 
     def post(self):
-        locality = self.request.get('q')
-        params = urllib.urlencode([('address', locality), ('sensor', 'false')])
-        url = 'http://maps.googleapis.com/maps/api/geocode/json?%s' % params
-        geocode = simplejson.loads(urlfetch.fetch(url).content)
-        georef = geomancer.georef(geocode)
-        if georef is None:
-            loctype = LocalityTypeApi.predict(locality)[0]
-            georef = geomancer.georef(geocode, loctype)
-        
+        self.response.headers['Content-Type'] = 'application/json'
+        q = self.request.get('q')
+        geocode = GoogleGeocodeApi.execute(q)
+        status = geocode.get('status')
+        if status != 'OK':
+            self.error(400)
+            self.response.out.write('Unable to georeference %s (%s)' % (q, geocode.get('status')))
+            return
+        if GoogleGeocodeApi.ispartialmatch(geocode.get('results')[0]):
+            loctype = LocalityTypeApi.predict(q)[0]
+            result = {
+                'locality': {
+                    'name': q,
+                    'type': loctype
+                    },
+                'status': '%s not implemented' % loctype
+                }
+            self.response.out.write(simplejson.dumps(result))
+            return
+        locality = Locality(q, geocode=geocode)
+        georef = geomancer.georeference(locality)
+        result = {
+            'locality': q,
+            'georeference':
+                {
+                'error':georef.error, 
+                'lat':georef.point.lat, 
+                'lng':georef.point.lng
+                }
+            }
+        self.response.out.write(simplejson.dumps(result))
 
 class RootHandler(BaseHandler):
     def get(self):
