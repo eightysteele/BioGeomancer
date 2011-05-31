@@ -30,6 +30,22 @@ A_WGS84 is the radius of the sphere at the equator for the WGS84 datum.
 '''
 A_WGS84 = 6378137.0
 
+class Locality(object):
+
+      def __init__(self, loc, loctype=None, parts={}, geocode=None):
+          """Constructs a Locality.
+
+          Arguments:
+              loc - The string locality (required)
+              loctype - The string locality type abbreviation
+              parts - A dictionary containing locality parts based on type
+              geocode - The raw Google Geocode API response object
+          """
+          self.loc = loc
+          self.loctype = loctype
+          self.parts = parts
+          self.geocode = geocode
+
 class Point(object):
     def __init__(self, lng, lat):
         self._lng = lng
@@ -362,24 +378,31 @@ def georef_feature(geocode, loctype=None):
     
 
 class Georeference(object):
-    def __init__(self, locality, point, error):
-        self.locality = locality
+    def __init__(self, point, error):
         self.point = point
         self.error = error
+    
+    def __str__(self):
+        return str(self.__dict__)
 
 def georeference(locality):
     """Entry point to georeferencing."""
-    loctype = predict(locality)
-    if loctype == 'ADDR' or loctype == 'F':
-        #Simple localities for which feature georef is the same as final georef.
-        geocode = simplejson.loads(geocode(locality))
-        georef = georef_feature(geocode)
-#    if loctype == 'FOH':
-        #Feature Offset Heading. Final georef uses feature georef starting point and extent.
-        #Need to parse locality for feature_name to geocode, plus offset and heading.
-#        geocode = simplejson.loads(geocode(feature_name))
-#        feature = georef_feature(geocode)
-        #georef uses feature's geocode as inputs to final georef
+    if locality.loctype:
+        loctype = locality.loctype.lower()
+    else:
+        loctype = None
+    if loctype is None:
+        result = locality.geocode.get('results')[0] # TODO handle multiple results
+        location = result.get('geometry').get('location')
+        point = Point(float(location.get('lat')), float(location.get('lng')))
+        if result.get('geometry').get('location_type') is 'ROOFTOP':
+            error = 100 # TODO
+        else:
+            error = 1000 # TODO
+        return Georeference(point, error) # TODO 
+    elif loctype is 'foh':
+        # TODO (John)
+        pass
         
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
