@@ -23,9 +23,14 @@ class GoogleGeocodeApi(object):
     @classmethod    
     def execute(cls, locality):
         """Executes geocode request for locality and returns response object."""
-        params = urllib.urlencode([('address', locality), ('sensor', 'false')])
-        url = 'http://maps.googleapis.com/maps/api/geocode/json?%s' % params
-        return simplejson.loads(urlfetch.fetch(url).content)
+        mkey = 'geocode-%s' % locality
+        result = memcache.get(mkey)
+        if not result:
+            params = urllib.urlencode([('address', locality), ('sensor', 'false')])
+            url = 'http://maps.googleapis.com/maps/api/geocode/json?%s' % params
+            result = simplejson.loads(urlfetch.fetch(url).content)
+            memcache.add(mkey, result)
+        return result
         
     @classmethod
     def ispartialmatch(cls, result):
@@ -124,6 +129,8 @@ class BaseHandler(webapp.RequestHandler):
 class LocalityTypeApi(BaseHandler):
     EMAIL = ''
     PASSWORD = ''
+    AUTH = None
+
     def get(self):
         self.post()
 
@@ -135,12 +142,14 @@ class LocalityTypeApi(BaseHandler):
         
     @classmethod
     def predict(cls, query):
-        results = memcache.get(query)
+        mkey = 'predict-%s' % query
+        results = memcache.get(mkey)
         if not results:
-            auth = GooglePredictionApi.GetAuthentication('eightysteele@gmail.com', '')
+            if not cls.AUTH:
+                cls.AUTH = GooglePredictionApi.GetAuthentication('eightysteele@gmail.com', '')
             model = 'biogeomancer/locs.csv'
-            results = GooglePredictionApi.Predict(auth, model, query)
-            #memcache.add(query, results)
+            results = GooglePredictionApi.Predict(cls.AUTH, model, query)
+            memcache.add(mkey, results)
         return results
 
 class GeoreferenceApi(BaseHandler):
@@ -150,6 +159,14 @@ class GeoreferenceApi(BaseHandler):
     def post(self):
         self.response.headers['Content-Type'] = 'application/json'
         q = self.request.get('q')
+        mkey = 'georef-%s' % q
+
+        result = memcache.get(mkey)
+        if result:
+            logging.info('RESULT ' + str(result))
+            self.response.out.write(simplejson.dumps(result))
+            return
+
         geocode = GoogleGeocodeApi.execute(q)
         status = geocode.get('status')
         if status != 'OK':
@@ -158,6 +175,56 @@ class GeoreferenceApi(BaseHandler):
             return
         if GoogleGeocodeApi.ispartialmatch(geocode.get('results')[0]):
             loctype = LocalityTypeApi.predict(q)[0]
+            if loctype == 'foh':
+                meters = ['m', 'm.', 'meter', 'meters', 'mts', 'mts.', 'metre', 'metres']
+                west = ['w', 'w.', 'west', 'western', 'w 1/2']
+                tokens = [x.strip().lower() for x in q.split() if x not in ['of']]
+
+                offsetunit = None
+                offsetval = None
+                heading = None
+                feature = None
+
+                for token in tokens:
+                    if token.isdigit():
+                        offsetval = float(token)
+                        continue
+                    for unit in meters:
+                        logging.info('%s=%s'%(token, unit))
+                        if token == unit:
+                            offsetunit = 'meter'
+                            continue
+                    for direction in west:
+                        if token == direction:
+                            heading = 'west'
+                            continue
+                    feature = token
+                parts = {
+                    'locality': q,
+                    'locality_type': loctype,
+                    'offset_unit': offsetunit,
+                    'offset_value': offsetval,
+                    'heading': heading,
+                    'feature': {
+                        'name': feature,
+                        'geocode': GoogleGeocodeApi.execute(feature)
+                        }
+                    }                
+                locality = Locality(q, loctype=loctype, parts=parts, geocode=geocode)
+                georef = geomancer.georeference(locality)
+                result = {
+                    'interpretation': parts,
+                    'georeference':
+                        {
+                        'error':georef.error, 
+                        'lat':georef.point.lat, 
+                        'lng':georef.point.lng
+                        }
+                    }
+                memcache.add(mkey, result)
+                self.response.out.write(simplejson.dumps(result))
+                return
+
             result = {
                 'locality': {
                     'name': q,
@@ -165,8 +232,10 @@ class GeoreferenceApi(BaseHandler):
                     },
                 'status': '%s not implemented' % loctype
                 }
+            memcache.add(mkey, result)
             self.response.out.write(simplejson.dumps(result))
             return
+
         locality = Locality(q, geocode=geocode)
         georef = geomancer.georeference(locality)
         result = {
@@ -178,6 +247,7 @@ class GeoreferenceApi(BaseHandler):
                 'lng':georef.point.lng
                 }
             }
+        memcache.add(mkey, result)
         self.response.out.write(simplejson.dumps(result))
 
 class RootHandler(BaseHandler):
