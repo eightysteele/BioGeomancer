@@ -2,6 +2,10 @@
 ##################
 production.ini
 
+# Google Prediction API #
+########################
+googlekey
+
 # Compiled source #
 ###################
 *.pyc
