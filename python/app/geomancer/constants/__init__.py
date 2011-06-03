@@ -1,6 +1,5 @@
 import collections
 import copy
-import geomancer
 import csv
 import logging
 import os
@@ -86,7 +85,6 @@ _conversions = [
 _conversion_map = {DistanceUnit.METER: {}}
 
 for c in _conversions:
-    print c
     _conversion_map.get(DistanceUnit.METER)[c.du_to] = c
 
 def convert_distance(value, dufrom, duto):
@@ -316,8 +314,8 @@ class Datum(object):
 
 def _build_datums_class():
     """Dynamically builds the Datums class from data in a CSV file."""
-    path = os.path.abspath(os.path.dirname(os.path.realpath(geomancer.__file__)))
-    path = os.path.join(path, 'constants', 'DatumTransformationToWGS84Parameters.csv')
+    path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+    path = os.path.join(path, 'DatumTransformationToWGS84Parameters.csv')
     dr = csv.DictReader(open(path, 'r'), skipinitialspace=True)
     props = {}
     datums = {}
@@ -369,10 +367,21 @@ def _build_datums_class():
 # The Datums class:
 Datums = _build_datums_class()
 
+class Heading(object):
+    def __init__(self, code, bearing, error, name, forms):
+        self.code = code
+        self.bearing = bearing
+        self.error = error
+        self.name = name
+        self.forms = forms
+
+    def __str__(self):
+        return str(self.__dict__)
+
 def _build_headings_class():
     """Dynamically builds the Headings class from data in a CSV file."""
-    path = os.path.abspath(os.path.dirname(os.path.realpath(geomancer.__file__)))
-    path = os.path.join(path, 'constants', 'HeadingsBearings.csv')
+    path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+    path = os.path.join(path, 'HeadingsBearings.csv')
     dr = csv.DictReader(open(path, 'r'), skipinitialspace=True)
     props = {}
     headings = {}
@@ -381,7 +390,7 @@ def _build_headings_class():
         bearing = row['bearing']
         error = row['error']
         name = row['name']
-        forms = row['forms']
+        forms = [x.strip() for x in row['forms'].split(',')]
         d = Heading(code, bearing, error, name, forms)
         props[code] = d
         headings[code] = d
