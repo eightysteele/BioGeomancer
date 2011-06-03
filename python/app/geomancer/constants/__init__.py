@@ -403,7 +403,7 @@ def _build_headings_class():
     
     return type('Headings', (), props)
 
-# The Datums class:
+# The Headings class:
 Headings = _build_headings_class()
 
 if __name__ == '__main__':
