@@ -369,5 +369,42 @@ def _build_datums_class():
 # The Datums class:
 Datums = _build_datums_class()
 
+def _build_headings_class():
+    """Dynamically builds the Headings class from data in a CSV file."""
+    path = os.path.abspath(os.path.dirname(os.path.realpath(geomancer.__file__)))
+    path = os.path.join(path, 'constants', 'HeadingsBearings.csv')
+    dr = csv.DictReader(open(path, 'r'), skipinitialspace=True)
+    props = {}
+    headings = {}
+    for row in dr:
+        code = row['code']
+        bearing = row['bearing']
+        error = row['error']
+        name = row['name']
+        forms = row['forms']
+        d = Heading(code, bearing, error, name, forms)
+        props[code] = d
+        headings[code] = d
+        
+    @classmethod
+    def codes(cls):
+        return headings.keys()
+    props['codes'] = codes
+
+    @classmethod
+    def fromcode(cls, code):
+        return headings.get(code)
+    props['fromcode'] = fromcode
+
+    @classmethod
+    def all(cls):
+        return iter(headings.values())
+    props['all'] = all
+    
+    return type('Headings', (), props)
+
+# The Datums class:
+Headings = _build_headings_class()
+
 if __name__ == '__main__':
     pass
