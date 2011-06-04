@@ -15,106 +15,105 @@ def constant(f):
 # ==============================================================================
 # DistanceUnit
 
-def _build_distanceunit_class():
-    """Dynamically builds the DistanceUnit class from data in a CSV file."""
-    props = {}
-    data = {'FOOT': 'foot', 'KILOMETER': 'kilometer', 'METER': 'meter', 
-             'MILE': 'mile', 'NAUTICAL_MILE': 'nautical mile', 'YARD': 'yard'}                        
-    
-    for unit in data.keys():
-        props[unit] = data.get(unit)
-    
-    @classmethod
-    def units(cls):
-        return data.keys()
-    props['units'] = units
-
-    @classmethod
-    def all(cls):
-        return iter(data.values())
-    props['all'] = all
-    
-    return type('DistanceUnit', (), props)
-
-DistanceUnit = _build_distanceunit_class()
-
+#def _build_distanceunit_class():
+#    """Dynamically builds the DistanceUnit class from data in a CSV file."""
+#    props = {}
+#    data = {'FOOT': 'foot', 'KILOMETER': 'kilometer', 'METER': 'meter', 
+#             'MILE': 'mile', 'NAUTICAL_MILE': 'nautical mile', 'YARD': 'yard'}                        
+#    
+#    for unit in data.keys():
+#        props[unit] = data.get(unit)
+#    
+#    @classmethod
+#    def units(cls):
+#        return data.keys()
+#    props['units'] = units
+#
+#    @classmethod
+#    def all(cls):
+#        return iter(data.values())
+#    props['all'] = all
+#    
+#    return type('DistanceUnit', (), props)
+#
+#DistanceUnit = _build_distanceunit_class()
 
 # ==============================================================================
 # DistanceConversion
 
-class _DistanceConversion(object):
-    @constant
-    def METER_PER_FEET():
-        return 1.0 / 3.2808399
-    @constant
-    def METER_PER_KILOMETER():
-        return 1000
-    @constant
-    def METER_PER_MILE():
-        return 1609.344
-    @constant
-    def METER_PER_YARD():
-        return 0.9144
-    @constant
-    def METER_PER_NAUTICAL_MILE():
-        return 1851.989
-
-DistanceConversion = _DistanceConversion()
+#class _DistanceConversion(object):
+#    @constant
+#    def METER_PER_FEET():
+#        return 1.0 / 3.2808399
+#    @constant
+#    def METER_PER_KILOMETER():
+#        return 1000
+#    @constant
+#    def METER_PER_MILE():
+#        return 1609.344
+#    @constant
+#    def METER_PER_YARD():
+#        return 0.9144
+#    @constant
+#    def METER_PER_NAUTICAL_MILE():
+#        return 1851.989
+#
+#DistanceConversion = _DistanceConversion()
 
 # ==============================================================================
 # Conversion calculator
 
-class _Conversion(object):
-    def __init__(self, du_from, du_to, factor):
-        self.du_from = du_from
-        self.du_to = du_to
-        self.factor = factor
-
-    def __str__(self):
-        return str(self.__dict__)
-
-_conversions = [
-    _Conversion(DistanceUnit.METER, DistanceUnit.FOOT, DistanceConversion.METER_PER_FEET),
-    _Conversion(DistanceUnit.METER, DistanceUnit.METER, 1),
-    _Conversion(DistanceUnit.METER, DistanceUnit.KILOMETER, DistanceConversion.METER_PER_KILOMETER),
-    _Conversion(DistanceUnit.METER, DistanceUnit.YARD, DistanceConversion.METER_PER_YARD),
-    _Conversion(DistanceUnit.METER, DistanceUnit.MILE, DistanceConversion.METER_PER_MILE),
-    _Conversion(DistanceUnit.METER, DistanceUnit.NAUTICAL_MILE, DistanceConversion.METER_PER_NAUTICAL_MILE)
-]
-
-_conversion_map = {DistanceUnit.METER: {}}
-
-for c in _conversions:
-    _conversion_map.get(DistanceUnit.METER)[c.du_to] = c
-
-def convert_distance(value, dufrom, duto):
-    if dufrom == duto:
-        return value
-    x = _conversion_map.get(DistanceUnit.METER).get(dufrom).factor
-    y = _conversion_map.get(DistanceUnit.METER).get(duto).factor
-    return float(value) * x/y
+#class _Conversion(object):
+#    def __init__(self, du_from, du_to, factor):
+#        self.du_from = du_from
+#        self.du_to = du_to
+#        self.factor = factor
+#
+#    def __str__(self):
+#        return str(self.__dict__)
+#
+#_conversions = [
+#    _Conversion(DistanceUnit.METER, DistanceUnit.FOOT, DistanceConversion.METER_PER_FEET),
+#    _Conversion(DistanceUnit.METER, DistanceUnit.METER, 1),
+#    _Conversion(DistanceUnit.METER, DistanceUnit.KILOMETER, DistanceConversion.METER_PER_KILOMETER),
+#    _Conversion(DistanceUnit.METER, DistanceUnit.YARD, DistanceConversion.METER_PER_YARD),
+#    _Conversion(DistanceUnit.METER, DistanceUnit.MILE, DistanceConversion.METER_PER_MILE),
+#    _Conversion(DistanceUnit.METER, DistanceUnit.NAUTICAL_MILE, DistanceConversion.METER_PER_NAUTICAL_MILE)
+#]
+#
+#_conversion_map = {DistanceUnit.METER: {}}
+#
+#for c in _conversions:
+#    _conversion_map.get(DistanceUnit.METER)[c.du_to] = c
+#
+#def convert_distance(value, dufrom, duto):
+#    if dufrom == duto:
+#        return value
+#    x = _conversion_map.get(DistanceUnit.METER).get(dufrom).factor
+#    y = _conversion_map.get(DistanceUnit.METER).get(duto).factor
+#    return float(value) * x/y
 
 # ==============================================================================
 # Direction
 
-class _Direction(object):
-    @constant
-    def NORTH():
-        return 'north'
-    @constant
-    def EAST():
-        return 'east'
-    @constant
-    def WEST():
-        return 'west'
-    @constant
-    def SOUTH():
-        return 'south'
-
-Direction = _Direction()
+#class _Direction(object):
+#    @constant
+#    def NORTH():
+#        return 'north'
+#    @constant
+#    def EAST():
+#        return 'east'
+#    @constant
+#    def WEST():
+#        return 'west'
+#    @constant
+#    def SOUTH():
+#        return 'south'
+#
+#Direction = _Direction()
 
 # ==============================================================================
-# CoordiateSystem
+# CoordinateSystem
 
 class _CoordinateSystem(object):
     @constant
@@ -362,10 +361,13 @@ def _build_datums_class():
         return iter(datums.values())
     props['all'] = all
     
-    return type('Datums', (), props)
+    return type('Datum', (), props)
 
 # The Datums class:
 Datums = _build_datums_class()
+
+# ==============================================================================
+# Heading
 
 class Heading(object):
     def __init__(self, code, bearing, error, name, forms):
@@ -396,6 +398,16 @@ def _build_headings_class():
         headings[code] = d
         
     @classmethod
+    def get_bearing(self):
+        return self.bearing
+    bearing = property(get_bearing)
+
+    @classmethod
+    def get_error(self):
+        return self.error
+    error = property(get_error)
+
+    @classmethod
     def codes(cls):
         return headings.keys()
     props['codes'] = codes
@@ -410,10 +422,64 @@ def _build_headings_class():
         return iter(headings.values())
     props['all'] = all
     
-    return type('Headings', (), props)
+    return type('Heading', (), props)
 
-# The Headings class:
+# The Heading class:
 Headings = _build_headings_class()
+
+# ==============================================================================
+# Heading
+
+class DistanceUnit(object):
+    def __init__(self, code, name, forms, tometers):
+        self.code = code
+        self.name = name
+        self.forms = forms
+        self.tometers = tometers
+
+    def __str__(self):
+        return str(self.__dict__)
+
+def _build_distanceunits_class():
+    """Dynamically builds the DistanceUnits class from data in a CSV file."""
+    path = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+    path = os.path.join(path, 'DistanceUnits.csv')
+    dr = csv.DictReader(open(path, 'r'), skipinitialspace=True)
+    props = {}
+    distanceunits = {}
+    for row in dr:
+        code = row['code']
+        name = row['name']
+        forms = [x.strip() for x in row['forms'].split(',')]
+        tometers = row['tometers']
+        d = DistanceUnit(code, name, forms, tometers)
+        props[code] = d
+        distanceunits[code] = d
+        
+    @classmethod
+    def get_tometers(self):
+        return self.tometers
+    tometers = property(get_tometers)
+
+    @classmethod
+    def codes(cls):
+        return distanceunits.keys()
+    props['codes'] = codes
+
+    @classmethod
+    def fromcode(cls, code):
+        return distanceunits.get(code)
+    props['fromcode'] = fromcode
+
+    @classmethod
+    def all(cls):
+        return iter(distanceunits.values())
+    props['all'] = all
+    
+    return type('DistanceUnit', (), props)
+
+# The DistanceUnits class:
+DistanceUnits = _build_distanceunits_class()
 
 if __name__ == '__main__':
     pass

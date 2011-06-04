@@ -17,7 +17,6 @@ except ImportError:
 import geomancer
 from geomancer import Locality
 
-
 class GoogleGeocodeApi(object):
     
     @classmethod    
@@ -148,6 +147,7 @@ class LocalityTypeApi(BaseHandler):
             if not cls.AUTH:
                 cls.AUTH = GooglePredictionApi.GetAuthentication('eightysteele@gmail.com', '')
             model = 'biogeomancer/locs.csv'
+#            model = 'tuco-geomancer/CALocsForPrediction.csv'
             results = GooglePredictionApi.Predict(cls.AUTH, model, query)
             memcache.add(mkey, results)
         return results
@@ -174,10 +174,11 @@ class GeoreferenceApi(BaseHandler):
             self.response.out.write('Unable to georeference %s (%s)' % (q, geocode.get('status')))
             return
         if GoogleGeocodeApi.ispartialmatch(geocode.get('results')[0]):
+            # partial match requires prediction and further processing
             loctype = LocalityTypeApi.predict(q)[0]
             if loctype == 'foh':
-                meters = ['m', 'm.', 'meter', 'meters', 'mts', 'mts.', 'metre', 'metres']
-                west = ['w', 'w.', 'west', 'western', 'w 1/2']
+#                meters = ['m', 'm.', 'meter', 'meters', 'mts', 'mts.', 'metre', 'metres']
+#                west = ['w', 'w.', 'west', 'western', 'w 1/2']
                 tokens = [x.strip().lower() for x in q.split() if x not in ['of']]
 
                 offsetunit = None
@@ -187,18 +188,37 @@ class GeoreferenceApi(BaseHandler):
 
                 for token in tokens:
                     if token.isdigit():
-                        offsetval = float(token)
+                        # TODO: fails for tokens that are distances as words (five).
+                        #       and tokens that consist of mixed numbers (5 1/2)
+                        offsetval = token
                         continue
-                    for unit in meters:
-                        logging.info('%s=%s'%(token, unit))
-                        if token == unit:
-                            offsetunit = 'meter'
-                            continue
-                    for direction in west:
-                        if token == direction:
-                            heading = 'west'
-                            continue
+                    if geomancer.get_unit(token):
+                        # TODO: fails for tokens that consist of more than one word (nautical miles).
+                        offsetunit = token
+                        continue
+                    if geomancer.get_heading(token):
+                        # TODO: fails for tokens that look like directions but are part of the name (South Haven).
+                        heading = token
+                        continue
+                    # TODO: Fails for features consisting of more than one word (Los Altos)
                     feature = token
+                # If the the component parts are all here, can't georeference.
+                if not offsetunit:
+                    self.error(400)
+                    self.response.out.write('Unable to georeference %s as %s, missing offset unit' % (q, loctype) )
+                    return
+                if not offsetval:
+                    self.error(400)
+                    self.response.out.write('Unable to georeference %s as %s, missing offset value' % (q, loctype) )
+                    return
+                if not heading:
+                    self.error(400)
+                    self.response.out.write('Unable to georeference %s as %s, missing heading value' % (q, loctype) )
+                    return
+                if not feature:
+                    self.error(400)
+                    self.response.out.write('Unable to georeference %s as %s, missing feature value' % (q, loctype) )
+                    return
                 parts = {
                     'locality': q,
                     'locality_type': loctype,
@@ -210,15 +230,17 @@ class GeoreferenceApi(BaseHandler):
                         'geocode': GoogleGeocodeApi.execute(feature)
                         }
                     }                
+                logging.info('parts: %s'%(parts))
                 locality = Locality(q, loctype=loctype, parts=parts, geocode=geocode)
                 georef = geomancer.georeference(locality)
+                logging.info('georef: %s'%(georef))
                 result = {
                     'interpretation': parts,
                     'georeference':
                         {
                         'error':georef.error, 
-                        'lat':georef.point.lat, 
-                        'lng':georef.point.lng
+                        'lat':georef.point[1], 
+                        'lng':georef.point[0]
                         }
                     }
                 memcache.add(mkey, result)
