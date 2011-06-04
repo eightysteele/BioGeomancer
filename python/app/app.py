@@ -147,6 +147,7 @@ class LocalityTypeApi(BaseHandler):
             if not cls.AUTH:
                 cls.AUTH = GooglePredictionApi.GetAuthentication('eightysteele@gmail.com', '')
             model = 'biogeomancer/locs.csv'
+#                cls.AUTH = GooglePredictionApi.GetAuthentication('gtuco.btuco@gmail.com', '')
 #            model = 'tuco-geomancer/CALocsForPrediction.csv'
             results = GooglePredictionApi.Predict(cls.AUTH, model, query)
             memcache.add(mkey, results)
@@ -177,8 +178,6 @@ class GeoreferenceApi(BaseHandler):
             # partial match requires prediction and further processing
             loctype = LocalityTypeApi.predict(q)[0]
             if loctype == 'foh':
-#                meters = ['m', 'm.', 'meter', 'meters', 'mts', 'mts.', 'metre', 'metres']
-#                west = ['w', 'w.', 'west', 'western', 'w 1/2']
                 tokens = [x.strip().lower() for x in q.split() if x not in ['of']]
 
                 offsetunit = None
@@ -238,9 +237,9 @@ class GeoreferenceApi(BaseHandler):
                     'interpretation': parts,
                     'georeference':
                         {
-                        'error':georef.error, 
-                        'lat':georef.point[1], 
-                        'lng':georef.point[0]
+                        'error':georef.get_error(), 
+                        'lat':georef.get_point().lat, 
+                        'lng':georef.get_point().lng
                         }
                     }
                 memcache.add(mkey, result)
@@ -264,9 +263,9 @@ class GeoreferenceApi(BaseHandler):
             'locality': q,
             'georeference':
                 {
-                'error':georef.error, 
-                'lat':georef.point.lat, 
-                'lng':georef.point.lng
+                'errortest':georef.get_error(), 
+                'lat':georef.get_point().lat, 
+                'lng':georef.get_point().lng
                 }
             }
         memcache.add(mkey, result)

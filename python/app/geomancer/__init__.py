@@ -22,14 +22,37 @@ import math
 import logging
 import simplejson
 
-#from constants import convert_distance
 from constants import DistanceUnits
 from constants import Datums
 from constants import Headings
-'''
-A_WGS84 is the radius of the sphere at the equator for the WGS84 datum. 
-'''
+"""A_WGS84 is the radius of the sphere at the equator for the WGS84 datum."""
 A_WGS84 = 6378137.0
+
+"""DEGREE_DIGITS is the number of significant digits to the right of the decimal
+to use in latitude and longitude equality determination and representation. This 
+should be set to 7 to preserve reversible transformations between coordinate systems 
+down to a resolution of roughly 1 m."""
+DEGREE_DIGITS = 7
+
+FORMAT = """.%sf"""
+
+def truncate(x, digits):
+    """Returns x including precision to the right of the decimal equal to digits."""
+    format_x = FORMAT % digits
+    return format(x,format_x)
+
+def sqr(x):
+    """Returns the square of x."""
+    return x * x
+
+def lng180(lng):
+    """Returns a longitude in degrees between {-180, 180] given a longitude in degrees."""
+    newlng = float(lng)
+    if lng <= -180:
+        return lng + 360
+    if newlng > 180:
+        return lng - 360
+    return lng
 
 class Locality(object):
     
@@ -46,6 +69,9 @@ class Locality(object):
         self.loctype = loctype
         self.parts = parts
         self.geocode = geocode
+
+    def __str__(self):
+        return str(self.__dict__)
 
 class Point(object):
     def __init__(self, lng, lat):
@@ -68,55 +94,6 @@ class Point(object):
 
     def __str__(self):
         return str(self.__dict__)
-
-class MetersPerDegree(object):
-    def __init__(self, point, datum):
-        self._point = point
-        self._datum = datum
-        self._calculate()
-
-    def getpoint(self):
-        return self._point
-    point = property(getpoint)
-
-    def getdatum(self):
-        return self._datum
-    datum = property(getdatum)
-
-    def getmlat(self):
-        return self._mlat
-    mlat = property(getmlat)
-
-    def getmlng(self):
-        return self._mlng
-    mlng = property(getmlng)
-    
-    def _calculate(self):
-        d = self._datum
-        p = self._point
-        a = d.axis
-        f = 1.0/d.flattening
-        e = 2.0 * f - math.pow(f, 2.0)
-        lat = p.lat
-        
-        # Radius of curvature in the prime vertical:
-        # N is the radius of curvature in the prime vertical. It's tangent to
-        # ellipsoid at the latitude: N(lat) = a/(1-e^2*sin^2(lat))^0.5
-        n = a / math.sqrt(1.0 -e * (math.pow(math.sin(lat * math.pi / 180.0), 2.0)))
-
-        # Radius of curvature in the prime meridian:
-        # M is the radius of curvature in the prime meridian. It's tangent to
-        # ellipsoid at the latitude: M(lat) = a(1-e^2)/(1-e^2*sin^2(lat))^1.5
-        m = a * (1.0 - e) / math.pow(1.0 - e * math.pow(math.sin(lat * math.pi / 180.0), 2.0), 1.5)
-
-        # Orthogonal distance to the polar axis
-        # Longitude is irrelevant for the calculations to follow so simplify by
-        # using longitude = 0, such that Y = 0 and X = Ncos(lat)cos(long). Note
-        # that long = 0, so cos(long) = 1.0.
-        x = n * math.cos(lat * math.pi / 180.0) * 1.0
-
-        self._mlat = math.pi * m / 180.0
-        self._mlng = math.pi * x / 180.0
                           
 class GeocodeResultParser(object):
     @classmethod
@@ -133,11 +110,12 @@ class GeocodeResultParser(object):
         
     @classmethod
     def get_point(cls, geometry):
+        """Returns a Point for the location element of a geometry."""
         if geometry is None:
             return None
         if not geometry.has_key('location'):
             return None
-        return (geometry.get('location').get('lng'), geometry.get('location').get('lat'))
+        return Point(geometry.get('location').get('lng'), geometry.get('location').get('lat'))
     
     @classmethod
     def get_bounds(cls, geometry):
@@ -147,7 +125,9 @@ class GeocodeResultParser(object):
     
     @classmethod
     def calc_radius(cls, geometry):
-        """Returns a radius in meters for the feature in the geometry. Assumes geometry exists."""
+        """Returns a radius in meters from the center to the furthest corner of the bounds of the geometry."""
+        if not geometry:
+            return None
         bb = cls.get_bounds(geometry)
         if bb == None:
             if geometry.get('location_type') == 'ROOFTOP':
@@ -155,8 +135,8 @@ class GeocodeResultParser(object):
             else: # location_type other than ROOFTOP and no bounds
                 return 1000
         center = cls.get_point(geometry)
-        ne = ( bb.get('northeast').get('lng'), bb.get('northeast').get('lat') )
-        sw = ( bb.get('southwest').get('lng'), bb.get('southwest').get('lat') )
+        ne = Point( bb.get('northeast').get('lng'), bb.get('northeast').get('lat') )
+        sw = Point( bb.get('southwest').get('lng'), bb.get('southwest').get('lat') )
         distne = haversine_distance(center, ne)
         distsw = haversine_distance(center, sw)
         if distne >= distsw:
@@ -177,97 +157,148 @@ class PaperMap(object):
     datum = property(getdatum)
 
     def getpoint(self, corner, ndist=None, sdist=None, edist=None, wdist=None):
-        # TODO: Calculations should be based on great circles.
+        """Returns a lng, lat given a starting lng, lat and orthogonal offset distances.
+
+        Arguments:
+            corner - the lng, lat of the starting point.
+            ndist - the distance north from corner along the same line of longitude to the 
+                    latitude of the final point.
+            sdist - the distance north from corner along the same line of longitude to the 
+                    latitude of the final point.
+            edist - the distance east from corner along the same line of latitude to the 
+                    longitude of the final point.
+            wdist - the distance west from corner along the same line of latitude to the 
+                    longitude of the final point."""
 
         if (not ndist and not sdist) or (not edist and not wdist):
             return None
-        
-        mpd = MetersPerDegree(corner, self.datum)
-
-        # Calculates latitude delta:
+        if not self.unit:
+            return None
+        ns = 0.0
+        ew = 0.0
         if ndist:
-            distmeters = convert_distance(ndist, self.unit, DistanceUnit.METER)
-            latdelta = distmeters / mpd.mlat
-        else:
-            distmeters = convert_distance(sdist, self.unit, DistanceUnit.METER)
-            latdelta = -(distmeters / mpd.mlat)
-        
-        # Calculates longitude delta:
+            ns = float(ndist)
+            nsbearing = 0
+        elif sdist:
+            ns = float(sdist)
+            nsbearing = 180
         if edist:
-            distmeters = convert_distance(edist, self.unit, DistanceUnit.METER)
-            lngdelta = distmeters / mpd.mlng
-        else:
-            distmeters = convert_distance(wdist, self.unit, DistanceUnit.METER)
-            lngdelta = -(distmeters / mpd.mlng)
+            ew = float(edist)
+            ewbearing = 90
+        elif wdist:
+            ew = -float(wdist)
+            ewbearing = 270
+        # convert distances to meters
+        ns = ns * get_unit(self.unit).tometers
+        ew = ew * get_unit(self.unit).tometers
+        # get coordinates of ns offset and ew offset
+        nspoint = get_point_from_distance_at_bearing(corner, ns, nsbearing)
+        ewpoint = get_point_from_distance_at_bearing(corner, ew, ewbearing)
+        return Point(ewpoint.lng, nspoint.lat)
 
-        # Calulates point latitude:
-        lat = corner.lat + latdelta
-        lat = 1.0 * round(lat * 10000000.0) / 10000000.0
+class Georeference(object):
+    def __init__(self, point, error):
+        self.point = point
+        self.error = error
+        
+    def get_error(self):
+        # error formatted to the nearest higher meter.
+        ferror = int(math.ceil(self.error))
+        return ferror
+    
+    def get_point(self):
+        # latitude, longitude formatted to standardized precision
+        flat = truncate(self.point.lat, DEGREE_DIGITS)
+        flng = truncate(self.point.lng,DEGREE_DIGITS)
+        return Point(flng, flat)
+    
+    def __str__(self):
+        return str(self.__dict__)
 
-        # Calculates point longitude:
-        lng = corner.lng + lngdelta
-        lng = 1.0 * round(lng * 10000000.0) / 10000000.0
+def get_point_from_distance_at_bearing(point, distance, bearing):
+    """Returns the destination point in degrees lng, lat truncated to the default number of
+    digits of precision by going the given distance at the bearing from the start_lng_lat.
+    
+    Arguments:
+        point - the starting Point
+        distance - the distance from the starting Point, in meters
+        bearing - the clockwise angle of the direction from the starting Point, in degrees from North
+         
+    Reference: http://www.movable-type.co.uk/scripts/latlong.html."""
 
-        return Point(lng, lat)
+    # ad is the angular distance (in radians) traveled.
+    ad = distance/A_WGS84
+    # lat1 is the latitude of the starting point in radians.
+    lat1 = math.radians(point.lat)
+    # lng1 is the longitude of the starting point in radians.
+    lng1 = math.radians(point.lng)
+    # b is the bearing direction in radians.
+    b = math.radians(bearing)
+    # lat2 is the latitude of the end point in radians.
+    lat2 = math.asin( math.sin(lat1) * math.cos(ad) + math.cos(lat1) * math.sin(ad) * math.cos(b) )
+    y = math.sin(b) * math.sin(ad) * math.cos(lat1)
+    x = math.cos(ad) - math.sin(lat1) * math.sin(lat2)
+    
+    """Account for rounding errors. If x is very close to 0, set it to 0 to avoid 
+    incorrect hemisphere determination.
+    For example, if x = -1.1e-16, atan2(0,x) will be -math.pi when it should be 0."""
+    if math.fabs(x) < 1e-10:
+        x = 0
+    # lng2 is the longitude of the end point in radians.
+    lng2 = lng1 + math.atan2(y, x)
+    lng2d = math.degrees(lng2)
+    lat2d = math.degrees(lat2)
+    return Point(float(truncate(lng2d,DEGREE_DIGITS)), float(truncate(lat2d,DEGREE_DIGITS)))
 
-def sqr(x):
-    '''Square of x.'''
-    return x * x
-
-def lng180(lng):
-    '''Given a longitude in degrees, returns a longitude in degrees between {-180, 180].'''
-    newlng = float(lng)
-    if lng <= -180:
-        return lng + 360
-    if newlng > 180:
-        return lng - 360
-    return lng
-
-def haversine_distance(start_lng_lat, end_lng_lat):
-    """ Returns the distance along a great circle between two lng lats on the surface of a
-    *sphere* of radius SEMI_MAJOR_AXIS using the Haversine formula.
-        Arguments:
-            start_lng_lat - 
-            end_lng_lat -
+def haversine_distance(point, end_point):
+    """Returns the distance in meters along a great circle between two Points on the surface of a
+    *sphere* of radius A_WGS84 (WGS84 radius) using the Haversine formula. This is an 
+    approximation of the distance on an ellipsoid.
+    Arguments:
+        point - the Point of the beginning of the arc  
+        end_point - the Point of the end of the arc
     """
-    dlng = math.radians(end_lng_lat[0] - start_lng_lat[0]) 
-    dlat = math.radians(end_lng_lat[1] - start_lng_lat[1])
-    '''a is the square of half the chord length between the points.'''
-    a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos( math.radians(start_lng_lat[1]) ) * math.cos( math.radians(end_lng_lat[1]) ) * math.sin(dlng/2) * math.sin(dlng/2)
-    '''Account for rounding errors. If a is very close to 1 set it to one to avoid domain exception.'''
+
+    dlng = math.radians(end_point.lng - point.lng) 
+    dlat = math.radians(end_point.lat - point.lat)
+    # a is the square of half the chord length between the points.'''
+    a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos( math.radians(point.lat) ) * math.cos( math.radians(end_point.lat) ) * math.sin(dlng/2) * math.sin(dlng/2)
+    # Account for rounding errors. If a is very close to 1 set it to one to avoid domain exception.'''
     if math.fabs(1-a) < 1e-10:
         a = 1
-    '''c is the angular distance in radians between the points.'''
+    # c is the angular distance in radians between the points.'''
     x = math.sqrt(1-a)
     y = math.sqrt(a)
     c = 2 * math.atan2(y, x)
     return A_WGS84 * c 
 
 def point2wgs84(point, datum):
-    """Converts a Point in a given datum to a Point in WGS84."""
-    '''
-    Uses the Abridged Molodensky Transformation.
-    See: 
-    Deakin, R.E. 2004. THE STANDARD AND ABRIDGED MOLDENSKY COORDINATE TRANSFORMATION FORMULAE. 
+    """Returns a Point in WGS84 given a Point in any datum using the Abridged Molodensky Transformation.
+    
+    Arguments:
+        point - the Point to transform
+        datum - the Datum of the Point to transform
+    
+    Reference: Deakin, R.E. 2004. THE STANDARD AND ABRIDGED MOLDENSKY COORDINATE TRANSFORMATION FORMULAE. 
     Department of Mathematical and Geospatial Sciences, RMIT University.
     http://user.gs.rmit.edu.au/rod/files/publications/Molodensky%20V2.pdf
-    '''
+    """
     latr = math.radians(point.lat)
     lngr = math.radians(point.lng)
     
-    '''Semi-major axis of given datum.'''
+    # a is the semi-major axis of given datum.
     a = datum.axis
     
-    '''Flattening of given datum (get_flattening actually return the inverse flattening).'''
+    # f is the flattening of given datum (get_flattening actually returns the inverse flattening).
     f = 1.0/datum.flattening
     dx = datum.dx
     dy = datum.dy
     dz = datum.dz
     
-    '''Difference in the semi-major axes.'''
+    # da is the difference between the semi-major axes.
     da = Datums.WGS84.axis - a
     
-    '''Difference in the flattenings.'''
+    # df is the difference between the flattenings.'''
     df = 1.0/Datums.WGS84.flattening - f
     
     e_squared = f*(2-f)
@@ -279,37 +310,8 @@ def point2wgs84(point, datum):
     newlat = math.degrees(latr + dlat)
     return Point(newlng, newlat)
 
-def DatumTransformToWGS84(lng, lat, a, f, dx, dy, dz):
-    '''
-    Return a lng, lat in WGS84 given a lng, lat, semi-major axis, inverse flattening, and
-    cartesian offsets in x, y, z for the original datum. Uses the Abridged Molodensky Transformation.
-    See: 
-    Deakin, R.E. 2004. THE STANDARD AND ABRIDGED MOLDENSKY COORDINATE TRANSFORMATION FORMULAE. 
-    Department of Mathematical and Geospatial Sciences, RMIT University.
-    user.gs.rmit.edu.au/rod/files/publications/Molodensky%20V2.pdf
-    '''
-    F_WGS84 = 1.0/298.257223563 
-    latr = math.radians(lat)
-    lngr = math.radians(lng)
-    da = A_WGS84 - a
-    df = F_WGS84 - f
-    e_squared = f*(2-f)
-    rho = a*(1-e_squared)/math.pow((1-e_squared * math.pow(math.sin(latr), 2)),1.5)
-    nu = a/math.pow((1-e_squared * math.pow(math.sin(latr), 2)),0.5)
-    dlat = (1/rho)*(-dx*math.sin(latr)*math.cos(lngr) - dy*math.sin(latr)*math.sin(lngr) + dz*math.cos(latr) + (f*da + a*df)*math.sin(2*latr))
-    dlng = (-dx*math.sin(lngr) + dy*math.cos(lngr))/(nu*math.cos(latr))
-    return (lng + math.degrees(dlng), lat + math.degrees(dlat))
-
-class Georeference(object):
-    def __init__(self, point, error):
-        self.point = point
-        self.error = error
-    
-    def __str__(self):
-        return str(self.__dict__)
-
 def get_unit(unitstr):
-    """Return a DistanceUnit instance from a string."""
+    """Returns a DistanceUnit from a string."""
     u = unitstr.replace('.', '').strip().lower()
     for unit in DistanceUnits.all():
         for form in unit.forms:
@@ -318,7 +320,7 @@ def get_unit(unitstr):
     return None
 
 def get_heading(headingstr):
-    """Return a Heading instance from a string."""
+    """Returns a Heading from a string."""
     h = headingstr.replace('-', '').replace(',', '').strip().lower()
     for heading in Headings.all():
         for form in heading.forms:
@@ -335,10 +337,10 @@ def georef_feature(geocode):
         return None
     status = geocode.get('status')
     if status != 'OK':
-        #Geocode failed, no results, no georeference possible.
+        # Geocode failed, no results, no georeference possible.
         return None
     if geocode.get('results')[0].has_key('geometry') == False:
-        #First result has no geometry, no georeference possible.
+        # First result has no geometry, no georeference possible.
         return None
     g = geocode.get('results')[0].get('geometry')
     point = GeocodeResultParser.get_point(g)
@@ -346,9 +348,9 @@ def georef_feature(geocode):
     return Georeference(point, error)
 
 def georeference(locality):
-    """Returns a Georeference given a Locality object as input.
+    """Returns a Georeference given a Locality.
         Arguments:
-            locality - an instance of a Locality object to georeference
+            locality - the Locality to georeference
     """
     if not locality:
         return None
@@ -364,51 +366,55 @@ def georeference(locality):
         feature = georef_feature(featuregeocode)
         error = foh_error(feature.point, feature.error, offset, unitstr, headingstr)
         # get a bearing from the heading
-        bearing = get_heading(headingstr).bearing
-        newpoint = foh_point(feature.point, offset, bearing)
+        bearing = float(get_heading(headingstr).bearing)
+        fromunit = get_unit(unitstr)
+        offsetinmeters = float(offset) * float(fromunit.tometers)        
+        newpoint = get_point_from_distance_at_bearing(feature.point, offsetinmeters, bearing)
         return Georeference(newpoint, error)
 
-def foh_point(point, offset, bearing):
-    """Returns the new point given by going the offset distance from the point at the bearing.
-        Arguments:
-            point - the center (lng, lat) of the feature staring point
-            offset - the linear distance (float) from the starting coordinate
-            bearing - the compass bearing (float) in degree from the starting coordinate
-    """
-    # TODO: Do the offset using great circle at bearing calculation
-    return point 
-
-def foh_error(point, extent, offset, offsetunits, headingstr):
-    # No datum error - always WGS84
-    # No source error from Maps API
-    # Extent always in meters - comes from Maps API
-    # No coordinate error from Maps API
+def foh_error(point, extent, offsetstr, offsetunits, headingstr):
+    """Returns the radius in meters from a Point containing all of the uncertainties
+    for a Locality of type Feature Offset Heading.
+    
+    Arguments:
+        point - the center of the feature in the Locality
+        extent - the radius from the center of the Feature to the furthest corner of the bounding
+                 box containing the feature, in meters
+        offset - the distance from the center of the feature, as a string
+        offsetunits - the units of the offset
+        headingstr - the direction from the feature to the location
+        
+    Note: all sources for error are shown, though some do not apply under the assumption of using the 
+    Google Geocoding API for get the feature information."""
     # error in meters
     error = 0
+    # No datum error - always WGS84
 #      error += datumError(datum, point)
+    # No source error from Maps Geocoding API
 #      error += sourceError(source)
     error += extent
     # offset must be a string in this call
-    distprecision = getDistancePrecision(offset)
-    logging.info('foh_error: offset: %s type: %s offsetunits: %s'%(offset, type(offset), offsetunits))
+    distprecision = getDistancePrecision(offsetstr)
     fromunit = get_unit(offsetunits)
     # distance precision in meters
     dpm = distprecision * float(fromunit.tometers)
     error += dpm
     # Convert offset to meters
-    offsetinmeters = float(offset) * float(fromunit.tometers)
+    offsetinmeters = float(offsetstr) * float(fromunit.tometers)
     # Get error angle from heading
     error = getDirectionError(error, offsetinmeters, headingstr)
+    # No coordinate error from Maps Geocoding API - more than six digits retained
 #    error += coordinatesPrecisionError(coordinates)
     return error
 
 def getDirectionError(starterror, offset, headingstr):
-    """Returns a final error given a starting error, an offset, and a heading
-        Arguments:
-            starterror - accumulated error (float) from extent, etc.
-            offset - the linear distance (float) from the starting coordinate
-            heading - the compass direction (str) from the starting coordinate
-    """ 
+    """Returns the error due to direction given a starting error, an offset, and a heading from a Point.
+
+    Arguments:
+        starterror - accumulated initial error from extent, etc., in meters
+        offset - the linear distance from the starting coordinate, in meters
+        headingstr - the direction from the feature to the location""" 
+    
     headingerror = float(get_heading(headingstr).error)
     x = offset * math.cos(math.radians(headingerror))
     y = offset * math.sin(math.radians(headingerror))
@@ -417,11 +423,16 @@ def getDirectionError(starterror, offset, headingstr):
     return neterror
 
 def getDistancePrecision(distance):
-    """Determine the uncertainty associated with the distance.
-    Force distance to be a string on input.
-    Methods taken from Wieczorek, et al. 2004, but modified for fractions to
-    be one-half of that described in the paper, which we now believe to be unreasonably conservative."""
-    logging.info('distance: %s type: %s'%(distance,type(distance)))
+    """Returns the precision of the string representation of the distance as a value in the same units.
+    
+    Arguments:
+        distance - the distance for which the precision is to be determined, as a string
+
+    Reference: Wieczorek, et al. 2004, MaNIS/HerpNet/ORNIS Georeferencing Guidelines, 
+    http://manisnet.org/GeorefGuide.html
+    
+    Note: Calculations modified for fractions to be one-half of that described in the paper, 
+    which we now believe to be unreasonably conservative."""
     if type(distance) != str and type(distance) != unicode:
         return None
     try:
@@ -433,11 +444,12 @@ def getDistancePrecision(distance):
     if float(distance) < 0.001:
         return 0.0
     # distance is a non-negative number expressed as a string
-    #Strip it of white space and make it into english decimal format
+    # Strip it of white space and put it in English decimal format
     d = distance.strip().replace(',','.')
     offsetuncertainty = 0.0
     offset = float(distance)
-    sigdigits = 0 # significant digits to the right of the decimal
+    # significant digits to the right of the decimal
+    sigdigits = 0 
     offsetuncertainty = 1
     hasdecimal = len(distance.split('.')) - 1
     if hasdecimal > 0:    
@@ -446,111 +458,36 @@ def getDistancePrecision(distance):
         #If the last digit is a zero, the original was specified to that level of precision.
         if distance[len(distance)-1] == '0':
             offsetuncertainty = 1.0 * math.pow(10.0, -1.0 * sigdigits) 
-            ''' Example: offsetstring = "10.0" offsetuncertainty = 0.1'''
+            # Example: offsetstring = "10.0" offsetuncertainty = 0.1
         else:
-            #Significant digits, but last one not '0'
-            #Otherwise get the fractional part of the interpreted offset. We'll use this to determine uncertainty.
+            # Significant digits, but last one not '0'
+            # Otherwise get the fractional part of the interpreted offset. 
+            # We'll use this to determine uncertainty.
             fracpart, intpart = math.modf(float(offset))
-            #Test to see if the fracpart can be turned in to any of the target fractions.
-            #fracpart/testfraction = integer within a predefined level of tolerance.
+            # Test to see if the fracpart can be turned in to any of the target fractions.
+            # fracpart/testfraction = integer within a predefined level of tolerance.
             denominators = [2.0, 3.0, 4.0, 8.0, 10.0, 100.0, 1000.0]
             for d in denominators:
               numerator, extra = math.modf(fracpart * d)
-#              nearestint = math.ceil(numerator)
               '''If the numerator is within tolerance of being an integer, then the
                 denominator represents the distance precision in the original
                 units.'''
               if numerator < 0.001 or math.fabs(numerator - 1) < 0.001:
-                  #This denominator appears to represent a viable fraction.
+                  # This denominator appears to represent a viable fraction.
                   offsetuncertainty = 1.0 / d
                   break
     else:
         powerfraction, powerint = math.modf(math.log10(offset))
-        #If the offset is a positive integer power of ten.
+        # If the offset is a positive integer power of ten.
         while offset % math.pow(10, powerint) > 0:
             powerint -= 1
         offsetuncertainty = math.pow(10.0, powerint)
     offsetuncertainty = offsetuncertainty * 0.5
     return offsetuncertainty
     
-def test_point2wgs84():
-    agd66point = Point(144.966666667, -37.8)
-    wgs84point = point2wgs84(agd66point, Datums.AGD84)
-    logging.info(wgs84point)
-    logging.info(Datums.AGD84)
-#    144.96797984155188, -37.798491994062296
-#    144.96798640000000, -37.798480400000000
-
-def test_georef():
-    geocode = simplejson.loads("""{
-   "results" : [
-      {
-         "address_components" : [
-            {
-               "long_name" : "Mountain View",
-               "short_name" : "Mountain View",
-               "types" : [ "locality", "political" ]
-            },
-            {
-               "long_name" : "San Jose",
-               "short_name" : "San Jose",
-               "types" : [ "administrative_area_level_3", "political" ]
-            },
-            {
-               "long_name" : "Santa Clara",
-               "short_name" : "Santa Clara",
-               "types" : [ "administrative_area_level_2", "political" ]
-            },
-            {
-               "long_name" : "California",
-               "short_name" : "CA",
-               "types" : [ "administrative_area_level_1", "political" ]
-            },
-            {
-               "long_name" : "United States",
-               "short_name" : "US",
-               "types" : [ "country", "political" ]
-            }
-         ],
-         "formatted_address" : "Mountain View, CA, USA",
-         "geometry" : {
-            "bounds" : {
-               "northeast" : {
-                  "lat" : 37.4698870,
-                  "lng" : -122.0446720
-               },
-               "southwest" : {
-                  "lat" : 37.35654100000001,
-                  "lng" : -122.1178620
-               }
-            },
-            "location" : {
-               "lat" : 37.38605170,
-               "lng" : -122.08385110
-            },
-            "location_type" : "APPROXIMATE",
-            "viewport" : {
-               "northeast" : {
-                  "lat" : 37.42150620,
-                  "lng" : -122.01982140
-               },
-               "southwest" : {
-                  "lat" : 37.35058040,
-                  "lng" : -122.14788080
-               }
-            }
-         },
-         "types" : [ "locality", "political" ]
-      }
-   ],
-   "status" : "OK"
-}""")
-    logging.info(georeference(geocode))
-
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    test_point2wgs84()
-    test_georef()
-#    test_distanceprecision()
-#    test_heading()
+#    test_georeference_feature()
+#    test_point_from_dist_at_bearing()
+#    test_haversine_distance()
     
